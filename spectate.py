@@ -1,19 +1,17 @@
 import types
 import inspect
+from weakref import ref
 
 
 # method wrapper source
 _method_src = (
     """def {name}({signature}):
     __args__ = [{args}]
-    if __inst__ in __args__:
-        __args__.remove(__inst__)
     for __val__ in ({defaults}):
         if not isinstance(__val__, __sentinel__):
             __args__.append(__val__)
     __args__.extend({varargs})
-    __spectator__.instance_will_call('{name}',
-                        __args__, {keywords})
+    __spectator__.instance_will_call('{name}', __args__, {keywords})
     try:
         result = __func__(*__args__, **{keywords})
     except Exception, e:
@@ -38,6 +36,15 @@ class Spectator(object):
 
     def __init__(self, inst):
         self.inst = inst
+        self.names = []
+
+    @property
+    def inst(self):
+        return self._inst()
+
+    @inst.setter
+    def inst(self, value):
+        self._inst = ref(value)
 
     def instance_will_call(self, name, args, kwargs):
         pass
@@ -59,11 +66,15 @@ class method_spectator(object):
         self.code = None
 
     def _gen_src_str(self, inst, func):
-        if not isinstance(func, types.FunctionType):
+        if isinstance(func, types.FunctionType):
+            aspec = inspect.getargspec(func)
+        elif isinstance(func, types.MethodType):
+            aspec = inspect.getargspec(func)
+            # instance is provided by func
+            del aspec.args[0]
+        else:
             # no introspection is available for this type
             aspec = inspect.ArgSpec((), 'args', 'kwargs', ())
-        else:
-            aspec = inspect.getargspec(func)
 
         split = len(aspec.args)-len(aspec.defaults)
 
@@ -79,7 +90,7 @@ class method_spectator(object):
 
         if len(defaults) != 0:
             for d, v in zip(*(defaults, aspec.defaults)):
-                sig += d + '=' + '__Sentinel__(' + str(v) + ')' + ', '
+                sig += d + '=' + '__sentinel__(' + str(v) + ')' + ', '
         if aspec.varargs is not None:
             sig += '*' + aspec.varargs + ', '
         if aspec.keywords is not None:
@@ -106,8 +117,7 @@ class method_spectator(object):
                 self._compile_count += 1
 
         evaldict = {'__sentinel__': Sentinel, '__func__': func,
-                    '__spectator__': inst.instance_spectator,
-                    '__inst__': inst}
+                    '__spectator__': inst.instance_spectator}
 
         try:
             eval(code, evaldict)
@@ -117,8 +127,6 @@ class method_spectator(object):
 
         newf = evaldict[func.__name__]
         newf.__doc__ = func.__doc__
-        if isinstance(func, types.MethodType):
-            newf = types.MethodType(newf, inst, inst.__class__)
         return newf
 
     def __get__(self, inst, cls):
@@ -139,9 +147,6 @@ class WatchedType(type):
         def __new__(cls, *args, **kwargs):
             inst = base.__new__(cls, *args, **kwargs)
             inst.instance_spectator = spectator_type(inst)
-            for n, m in inspect.getmembers(cls):
-                if isinstance(m, method_spectator):
-                    setattr(inst, n, m.new_method(inst))
             return inst
 
         classdict['__new__'] = __new__
