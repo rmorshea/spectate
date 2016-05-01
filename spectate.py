@@ -4,7 +4,7 @@ from weakref import ref
 
 
 # method wrapper source
-_method_src = (
+_wrapper_src = (
     """def {name}({signature}):
     __args__ = [{args}]
     for __val__ in ({defaults}):
@@ -99,7 +99,7 @@ class method_spectator(object):
             sig = sig[:-2]
 
         a, kw = aspec.varargs or (), aspec.keywords or {}
-        return _method_src.format(name=func.__name__, signature=sig,
+        return _wrapper_src.format(name=func.__name__, signature=sig,
             args=args, defaults=dvals, varargs=a, keywords=kw)
 
     def new_method(self, inst):
