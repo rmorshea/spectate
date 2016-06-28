@@ -66,13 +66,13 @@ l = WatchedList([1, 2, 3])
 l[0] = 0
 ```
 ```
-__setitem__ : {0: 1} -> {0: 2}
+__setitem__ : {0: 1} -> {0: 0}
 ```
 
 ## Under The Hood
 Methods are tracked by using `WatchedType` to create a new class with `method_spectator` descriptors in
-the place of specified methods. At the time an instance of this class is created, a spectator that has a
-weak reference to it is assigned under the attribute name `instance_spectator`. When a `method_spectator`
+the place of specified methods. At the time an instance of this class is created, a spectator that weakly
+references it is assigned under the attribute name `instance_spectator`. When a `method_spectator`
 is accessed through an instance, the descriptor will return a new wrapper function that notifies the
 `instance_spectator` of the fact that the wrapper is being called. 
 
