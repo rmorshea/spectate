@@ -7,6 +7,8 @@ Instalation
 -----------
 ``spectate`` can be installed from GitHub using ``pip``:
 
+.. code:: text
+    
     $ pip install git+https://github.com/rmorshea/spectate.git#egg=spectate
 
 Basic Usage
@@ -15,72 +17,102 @@ Basic Usage
 for managing updates, don't need to be the outward responsibility of a user, and can instead be
 done automagically in the background.
 
-For instance, if it were desirable to keep track of element changes in a list, ``spectate`` could be
+For example, if it were desirable to keep track of element changes in a list, ``spectate`` could be
 used to observe ``list.__setitiem__`` in order to be notified when a user sets the value of an element
-in the list. To do this, we would first create a ``ListSpectator`` that inherits from ``Spectator``:
+in the list. To do this, we would first create a ``EventfulList`` using ``watched_type``, and then
+store pairs of callbacks to an instance of ``EventfulList`` using the public method ``spectator_callback``.
+Each pair is registered by specifying, with keywords, whether the callback should be triggered
+``before``, and/or or ``after`` a given method is called - hereafter refered to as "beforebacks"
+and "afterbacks" respectively.
+
+Beforebacks
+-----------
+
++ Have a signature of ``(instance, call)``
+
++   ``instance`` is the owner of the method
+
+    +   ``call`` is a ``Bunch`` with the keys:
+
+        + ``'name'`` - the name of the method which was called
+        + ``'args'`` - the arguments which that method will call
+        + ``'kwargs'`` - the keywords which that method will call
+
++   Can ``return`` a value which gets passed on to its respective afterback.
++   If an error is encountered:
+
+    +   The wrapper will:
+
+        1. ``return`` the original ``call``
+        2. Set the ``'error'`` key in the ``answer`` passed to its afterback.
+
+    +   The base method's call is not obstructed by raised beforebacks.
+
+Afterbacks
+----------
+
++   Have a signature of ``(instance, answer)``
+
+    +   ``instance`` is the owner of the method
+    +   ``answer`` is a ``Bunch`` with the keys:
+
+        +   ``'name'`` - the name of the method which was called
+        +   ``'value'`` - the value returned by the method
+        +   ``'before'`` - the value returned by the respective beforeback
+        +   ``'error'`` - None, or the error encountered in the beforeback
+
++ Responcible for raising beforeback errors.
++ Should not ``return``
+
+Example
+-------
 
 .. code-block:: python
 
-    from spectate import Spectator
+    from spectate import watched_type
 
-    class ListSpectator(Spectator):
-        
-        def __init__(self, inst):
-            super(ListSpectator, self).__init__(inst)
-            self._change = {'old': None, 'new': None}
-        
-        def instance_will_call(self, name, args, kwargs):
-            # we know the name will be __setitem__
-            # since that's all we're spectating
-            index, new = args
-            try:
-                old = self.inst[index]
-            except:
-                pass
-            else:
-                if old != new:
-                    self._change['old'] = {index: old}
-                    self._change['new'] = {index: new}
-        
-        def instance_post_call(self, name, returned):
-            o, n = self._change['old'], self._change['new']
-            if o and n:
-                print("%s : %r -> %r" % (name, o, n))
-                self._change['old'] = None
-                self._change['new'] = None
+    EventfulList = watched_type('EventfulList', list, '__setitem__')
 
-``instance_will_call`` considers the argments being passed to ``__setitem__`` and determines whether
-the value of the element being set will be different. If it's different, the new and old values
-are cached. Then, ``instance_post_call`` checks for a change, and prints it if there was.
+    def pass_on_old_value(inst, call):
+        """The beforeback"""
+        index = call.args[0]
+        old = inst[index]
+        return index, old
 
-To implement ``ListSpectator``, all we need to do is create a ``WatchedList`` class using ``WatchedType``:
+    def print_element_change(inst, answer):
+        """The afterback"""
+        # answer.before = pass_on_old_value(call)
+        index, old = answer.before
+        new = inst[index]
+        if new != old:
+            print("{%s: %s} -> {%s: %s}" %
+                (index, old, index, new))
+
+``pass_on_old_value`` simply pulls the old value stored at the given index, and then passes
+that value and the index on to its afterback. The afterback then checks to see if the value
+which is `now` stored at that index, is equal to the value which `was` stored there. If it is,
+nothing happens, however if it isn't, the change gets printed.
+
+Instances of ``EventfulList`` will behave exactly like a ``list`` in every way. The only
+difference being that when a user decides to change the value of a preexisting element, the
+spectator is notified, and will print once the action is complete:
 
 .. code-block:: python
 
-    WatchedList = WatchedType('WatchedList', list, ListSpectator, '__setitem__')
+    elist = EventfulList([1, 2, 3])
 
+    elist.spectator_callback('__setitem__',
+        before=pass_on_old_value,
+        after=print_element_change)
 
-The instances of ``WatchedList`` will behave exactly like a ``list`` in every way. The only difference being
-that when a user decides to change the value of a preexisting element, the spectator is notified, and
-will print once the action is complete:
+    elist[0] = 0
 
-.. code-block:: python
-
-    l = WatchedList([1, 2, 3])
-    l[0] = 0
-
-Prints ``__setitem__ : {0: 1} -> {0: 0}``
+Prints ``{0: 1} -> {0: 0}``
 
 Under The Hood
 --------------
-Methods are tracked by using ``WatchedType`` to create a new class with ``method_spectator`` descriptors in
-the place of specified methods. At the time an instance of this class is created, a spectator that weakly
-references it is assigned under the attribute name ``instance_spectator``. When a ``method_spectator``
-is accessed through an instance, the descriptor will return a new wrapper function that notifies the
-``instance_spectator`` of the fact that the wrapper is being called. 
-
-The instance's spectator is pinged before and after the wrapper function returned by a ``method_spectator``
-calls its base method. This fully communicates what will happen, and what has happened to the instance
-when the base method is called - the preemptive notification is sent with the arguments of the call and the
-name of the base method, while afterwards, the base method's name and the call's result are sent to the
-spectator.
+Methods are tracked by using ``watched_type`` to create a new class with ``method_spectator`` descriptors in
+the place of specified methods. At the time an instance of this class is created, a spectator is assigned
+under the attribute name ``_instance_spectator``. When a ``method_spectator`` is accessed through an instance,
+the descriptor will return a new wrapper function that will redirect to ``Spectator.wrapper``, which triggers
+the beforebacks and afterbacks registered to the instance.
