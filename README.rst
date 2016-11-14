@@ -1,3 +1,6 @@
+.. image:: https://travis-ci.org/rmorshea/spectate.svg?branch=master
+    :target: https://travis-ci.org/rmorshea/spectate
+
 ========
 Spectate
 ========
