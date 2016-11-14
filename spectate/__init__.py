@@ -1,1 +1,1 @@
-from spectate import *
+from .spectate import *

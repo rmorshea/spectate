@@ -20,10 +20,10 @@ done automagically in the background.
 For example, if it were desirable to keep track of element changes in a list, ``spectate`` could be
 used to observe ``list.__setitiem__`` in order to be notified when a user sets the value of an element
 in the list. To do this, we would first create a ``EventfulList`` using ``watched_type``, and then
-store pairs of callbacks to an instance of ``EventfulList`` using the public method ``spectator_callback``.
-Each pair is registered by specifying, with keywords, whether the callback should be triggered
-``before``, and/or or ``after`` a given method is called - hereafter refered to as "beforebacks"
-and "afterbacks" respectively.
+store pairs of callbacks to an instance of ``EventfulList`` using its `instance_spectator` attribute.
+Each pair is registered by calling the `instance_spectator`'s `callback` method. You can then specify,
+with keywords, whether the callback should be triggered ``before``, and/or or ``after`` a given method
+is called - hereafter refered to as "beforebacks" and "afterbacks" respectively.
 
 Beforebacks
 -----------
@@ -59,9 +59,7 @@ Afterbacks
         +   ``'name'`` - the name of the method which was called
         +   ``'value'`` - the value returned by the method
         +   ``'before'`` - the value returned by the respective beforeback
-        +   ``'error'`` - None, or the error encountered in the beforeback
 
-+ Responcible for raising beforeback errors.
 + Should not ``return``
 
 Example
@@ -101,7 +99,7 @@ spectator is notified, and will print once the action is complete:
 
     elist = EventfulList([1, 2, 3])
 
-    elist.spectator_callback('__setitem__',
+    elist.instance_spectator.callback('__setitem__',
         before=pass_on_old_value,
         after=print_element_change)
 
@@ -111,8 +109,8 @@ Prints ``{0: 1} -> {0: 0}``
 
 Under The Hood
 --------------
-Methods are tracked by using ``watched_type`` to create a new class with ``method_spectator`` descriptors in
-the place of specified methods. At the time an instance of this class is created, a spectator is assigned
-under the attribute name ``_instance_spectator``. When a ``method_spectator`` is accessed through an instance,
+Methods are tracked by using ``watched_type`` to create a new class with ``MethodSpectator`` descriptors in
+the place of specified methods. At the time an instance of this class is created, a `Spectator` is assigned
+under the attribute name ``instance_spectator``. When a ``MethodSpectator`` is accessed through an instance,
 the descriptor will return a new wrapper function that will redirect to ``Spectator.wrapper``, which triggers
 the beforebacks and afterbacks registered to the instance.
