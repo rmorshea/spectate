@@ -124,7 +124,7 @@ class MethodSpectator(object):
         self.base, self.name = base, name
         aspec = getargspec(self.basemethod)
         self.defaults = aspec.defaults
-        self.code, self.defaults = self._code(aspec)
+        self.code = self._code(aspec)
 
     @property
     def basemethod(self):
@@ -147,7 +147,7 @@ class MethodSpectator(object):
         filename = "watched-method-gen-%d" % self._compile_count
         code = compile(src, filename, 'single')
         MethodSpectator._compile_count += 1
-        return code, aspec.defaults
+        return code
 
     def new_wrapper(self, inst):
         evaldict = {}
