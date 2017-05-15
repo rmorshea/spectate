@@ -33,8 +33,7 @@ Beforebacks
 
 + Have a signature of ``(instance, call)``
 
-+   ``instance`` is the owner of the method
-
+    +   ``instance`` is the owner of the method
     +   ``call`` is a ``Bunch`` with the keys:
 
         + ``'name'`` - the name of the method which was called

@@ -1,6 +1,31 @@
+# The MIT License (MIT)
+
+# Copyright (c) 2016 Ryan S. Morshead
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+import re
 import six
 import types
 import inspect
+
 
 def getargspec(func):
     if isinstance(func, types.FunctionType) or isinstance(func, types.MethodType):
@@ -8,10 +33,6 @@ def getargspec(func):
     else:
         # no signature introspection is available for this type
         return inspect.ArgSpec(None, 'args', 'kwargs', None)
-
-class WatchedType(object):
-    """An eventful base class purely for introspection"""
-    pass
 
 
 class Bunch(dict):
@@ -40,13 +61,15 @@ class Bunch(dict):
 
 class Spectator(object):
 
-    def __init__(self, base, subclass):
-        self.base = base
+    def __init__(self, subclass):
         self.subclass = subclass
         self._callback_registry = {}
 
     def callback(self, name, before=None, after=None):
-        for name in (name if isinstance(name, (list, tuple)) else (name,)):
+        if isinstance(name, (list, tuple)):
+            for name in name:
+                self.callback(name, before, after)
+        else:
             if not isinstance(getattr(self.subclass, name), MethodSpectator):
                 raise ValueError("No method specator for '%s'" % name)
             if before is None and after is None:
@@ -63,12 +86,19 @@ class Spectator(object):
             l.append((before, after))
 
     def remove_callback(self, name, before=None, after=None):
-        if name in self._callback_registry:
-            l = self._callback_registry[name]
+        if isinstance(name, (list, tuple)):
+            for name in name:
+                self.remove_callback(name, before, after)
         else:
-            l = []
-            self._callback_registry[name] = l
-        l.remove((before, after))
+            if name in self._callback_registry:
+                l = self._callback_registry[name]
+            else:
+                l = []
+                self._callback_registry[name] = l
+            l.remove((before, after))
+            if len(l) == 0:
+                # cleanup if all callbacks are gone
+                del self._callback_registry[name]
 
     def wrapper(self, name, args, kwargs):
         """A callback made prior to calling the given base method
@@ -96,7 +126,7 @@ class Spectator(object):
                     v = None
                 hold.append(v)
 
-            out = getattr(self.base, name)(*args, **kwargs)
+            out = getattr(self.subclass, name).basemethod(*args, **kwargs)
 
             for a, bval in zip(afterbacks, hold):
                 if a is not None:
@@ -108,49 +138,51 @@ class Spectator(object):
                     bval(out)
             return out
         else:
-            return getattr(self.base, name)(*args, **kwargs)
+            return getattr(self.subclass, name).basemethod(*args, **kwargs)
 
 
 class MethodSpectator(object):
 
     _compile_count = 0
     _src_str = """def {name}({signature}):
-    args, varargs, kwargs = [{args}], {varargs}, {keywords}
-    args.extend(varargs)
-    return args[0].instance_spectator.wrapper(
-        '{name}', tuple(args), kwargs.copy())"""
+    args, vargs, kwargs = {args}, {varargs}, {keywords};
+    return globals()["spectator"].wrapper('{name}', (args + vargs), kwargs)"""
 
     def __init__(self, base, name):
-        self.base, self.name = base, name
+        self.name = name
+        self.base = base
         aspec = getargspec(self.basemethod)
         self.defaults = aspec.defaults
-        self.code = self._code(aspec)
-
+        self.code, self.defaults = self._code(aspec)
+    
     @property
     def basemethod(self):
         return getattr(self.base, self.name)
 
     def _code(self, aspec):
-        # list values were repred - remove quotes
-        args = str(aspec.args)[1:-1].replace("'", "")
-        signature = args + (", " if args else "")
+        args = str(aspec.args or ())[1:-1].replace("'", "")
+        signature = args + (", " if aspec.args else "")
+        if args:
+            args = args.join(("(", ",)"))
         if aspec.varargs is not None:
             signature += '*' + aspec.varargs + ', '
         if aspec.keywords is not None:
             signature += '**' + aspec.keywords
         if signature.endswith(', '):
             signature = signature[:-2]
+
         src = self._src_str.format(name=self.name,
-            signature=signature, args=args,
+            signature=signature, args=args or (),
             varargs=aspec.varargs or (),
             keywords=aspec.keywords or {})
-        filename = "watched-method-gen-%d" % self._compile_count
-        code = compile(src, filename, 'single')
-        MethodSpectator._compile_count += 1
-        return code
+        name = re.findall('[A-Z][a-z]*', type(self).__name__)
+        filename = "-".join(name).upper() + "-#%s"
+        code = compile(src, filename % self._compile_count, 'single')
+        type(self)._compile_count += 1
+        return code, aspec.defaults
 
-    def new_wrapper(self, inst):
-        evaldict = {}
+    def new_wrapper(self, inst, spectator):
+        evaldict = {"spectator": spectator}
         eval(self.code, evaldict)
         # extract wrapper by name
         new = evaldict[self.name]
@@ -159,33 +191,68 @@ class MethodSpectator(object):
         new.__defaults__ = self.defaults
         return types.MethodType(new, inst)
 
-    def __call__(self, *args, **kwargs):
-        return self.new_wrapper(None, self.base)(*args, **kwargs)
-
     def __get__(self, inst, cls):
         if inst is None:
             return self
-        elif inst.instance_spectator is None:
-            return types.MethodType(self.basemethod, inst)
+        elif getattr(inst, "_instance_spectator", None):
+            return self.new_wrapper(inst, inst._instance_spectator)
         else:
-            return self.new_wrapper(inst)
+            return types.MethodType(self.basemethod, inst)
 
 
-def watched_type(name, base, *notify_on):
-    classdict = base.__dict__.copy()
+class WatchableType(object):
+    """A base class for introspection"""
+    pass
 
-    def __new__(cls, *args, **kwargs):
-        inst = base.__new__(cls, *args, **kwargs)
-        object.__setattr__(inst, 'instance_spectator', Spectator(base, cls))
-        return inst
 
-    classdict['__new__'] = __new__
+def expose_as(name, base, *methods):
+    return expose(base, *methods, name=name)
 
-    for method in notify_on:
+
+def expose(base, *methods, **kwargs):
+    classdict = {}
+    for method in methods:
         if not hasattr(base, method):
-            raise ValueError("Cannot notify on '%s', because '%s' "
+            raise AttributeError("Cannot expose '%s', because '%s' "
                 "instances lack this method" % (method, base.__name__))
         else:
             classdict[method] = MethodSpectator(base, method)
+    name = kwargs.get("name") or base.__name__
+    return type(name, (base, WatchableType), classdict)
 
-    return type(name, (base, WatchedType), classdict)
+
+def watchable(value):
+    check = issubclass if inspect.isclass(value) else isinstance
+    return check(value, WatchableType)
+
+
+def watch(value, *args, **kwargs):
+    if inspect.isclass(value):
+        value = value(*args, **kwargs)
+        return value, watch(value)
+    if isinstance(value, WatchableType):
+        wtype = type(value)
+    else:
+        raise TypeError("Expected a WatchableType, not %r." % value)
+    spectator = getattr(value, "_instance_spectator", None)
+    if not isinstance(spectator, Spectator):
+        spectator = Spectator(wtype)
+        value._instance_spectator = spectator
+    return spectator
+
+
+def unwatch(value):
+    if not isinstance(value, WatchableType):
+        raise TypeError("Expected a WatchableType, not %r." % value)
+    spectator = watcher(value)
+    try:
+        del value._instance_spectator
+    except:
+        pass
+    return spectator
+
+
+def watcher(value):
+    if not isinstance(value, WatchableType):
+        raise TypeError("Expected a WatchableType, not %r." % value)
+    return getattr(value, "_instance_spectator", None)
