@@ -33,8 +33,7 @@ Beforebacks
 
 + Have a signature of ``(instance, call)``
 
-+   ``instance`` is the owner of the method
-
+    +   ``instance`` is the owner of the method
     +   ``call`` is a ``Bunch`` with the keys:
 
         + ``'name'`` - the name of the method which was called
@@ -70,9 +69,9 @@ Example
 
 .. code-block:: python
 
-    from spectate import watched_type
+    from spectate import expose_as
 
-    EventfulList = watched_type('EventfulList', list, '__setitem__')
+    EventfulList = expose_as('EventfulList', list, '__setitem__')
 
     def pass_on_old_value(inst, call):
         """The beforeback"""
@@ -100,9 +99,9 @@ spectator is notified, and will print once the action is complete:
 
 .. code-block:: python
 
-    elist = EventfulList([1, 2, 3])
+    elist, spectator = watch(EventfulList, [1, 2, 3])
 
-    elist.instance_spectator.callback('__setitem__',
+    spectator.callback('__setitem__',
         before=pass_on_old_value,
         after=print_element_change)
 
@@ -112,8 +111,8 @@ Prints ``{0: 1} -> {0: 0}``
 
 Under The Hood
 --------------
-Methods are tracked by using ``watched_type`` to create a new class with ``MethodSpectator`` descriptors in
-the place of specified methods. At the time an instance of this class is created, a `Spectator` is assigned
-under the attribute name ``instance_spectator``. When a ``MethodSpectator`` is accessed through an instance,
-the descriptor will return a new wrapper function that will redirect to ``Spectator.wrapper``, which triggers
-the beforebacks and afterbacks registered to the instance.
+Methods are tracked by using ``expose`` or (``expose_as``) to create a new class with ``MethodSpectator``
+descriptors in the place of specified methods. Then, a user will create a ``Spectator`` using ``watch``
+which is stored on the instance under the attribute ``_instance_spectator``. When a ``MethodSpectator``
+is accessed through an instance, the descriptor will return a wrapper that will redirect to
+``Spectator.wrapper``, which triggers the beforebacks and afterbacks registered to the instance.
