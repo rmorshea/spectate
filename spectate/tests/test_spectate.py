@@ -134,12 +134,6 @@ def test_callback_closure():
         callbacks_called[0] += 1
         def closure(value):
             callbacks_called[1] += 1
-            print(checklist[-1])
-            print("-----")
-            print(Bunch(
-                name=call.name, value=value,
-                before=call))
-
             assert (checklist[-1] == Bunch(
                 name=call.name, value=value,
                 before=call))
