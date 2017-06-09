@@ -22,11 +22,12 @@ done automagically in the background.
 
 For example, if it were desirable to keep track of element changes in a list, ``spectate`` could be
 used to observe ``list.__setitiem__`` in order to be notified when a user sets the value of an element
-in the list. To do this, we would first create a ``EventfulList`` using ``watched_type``, and then
-store pairs of callbacks to an instance of ``EventfulList`` using its `instance_spectator` attribute.
-Each pair is registered by calling the `instance_spectator`'s `callback` method. You can then specify,
-with keywords, whether the callback should be triggered ``before``, and/or or ``after`` a given method
-is called - hereafter refered to as "beforebacks" and "afterbacks" respectively.
+in the list. To do this, we would first create an ``elist`` type using ``expose_as``, construct an
+instance of that type, and then store callback pairs to that instance's spectator. To access a spectator,
+register one with ``watch`` (e.g. ``spectator = watch(the_elist)``), retrieve a preexisting one with the
+``watcher`` function. Callback pairs are stored by calling the ``watcher(the_list).callback`` method. You
+can then specify, with keywords, whether the callback should be triggered ``before``, and/or or ``after``
+a given method is called - hereafter refered to as "beforebacks" and "afterbacks" respectively.
 
 Beforebacks
 -----------
@@ -41,14 +42,6 @@ Beforebacks
         + ``'kwargs'`` - the keywords which that method will call
 
 +   Can ``return`` a value which gets passed on to its respective afterback.
-+   If an error is encountered:
-
-    +   The wrapper will:
-
-        1. ``return`` the original ``call``
-        2. Set the ``'error'`` key in the ``answer`` passed to its afterback.
-
-    +   The base method's call is not obstructed by raised beforebacks.
 
 Afterbacks
 ----------
@@ -71,7 +64,7 @@ Example
 
     from spectate import expose_as
 
-    EventfulList = expose_as('EventfulList', list, '__setitem__')
+    elist = expose_as('elist', list, '__setitem__')
 
     def pass_on_old_value(inst, call):
         """The beforeback"""
@@ -98,8 +91,10 @@ difference being that when a user decides to change the value of a preexisting e
 spectator is notified, and will print once the action is complete:
 
 .. code-block:: python
-
-    elist, spectator = watch(EventfulList, [1, 2, 3])
+    # if a WatchableType is passed to watch, any following
+    # arguments are passed to it constructor. Thus a new
+    # instance is returned along with its spectator
+    elist, spectator = watch(elist, [1, 2, 3])
 
     spectator.callback('__setitem__',
         before=pass_on_old_value,
