@@ -1,5 +1,6 @@
 include README.md
-include summary.rst
+include .travis.yml
+include requirements.txt
 
 # Examples
 graft examples
