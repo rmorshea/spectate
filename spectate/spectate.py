@@ -25,10 +25,10 @@ class Bunch(dict):
             return self.__getitem__(key)
         except KeyError:
             raise AttributeError(key)
-    
+
     def __setattr__(self, key, value):
         self.__setitem__(key, value)
-    
+
     def __dir__(self):
         # py2-compat: can't use super because dict doesn't have __dir__
         names = dir({})
@@ -134,7 +134,7 @@ class MethodSpectator(object):
         aspec = getargspec(self.basemethod)
         self.defaults = aspec.defaults
         self.code, self.defaults = self._code(aspec)
-    
+
     @property
     def basemethod(self):
         return getattr(self.base, self.name)
@@ -181,15 +181,16 @@ class MethodSpectator(object):
 
 
 class WatchableType(object):
-    """A base class for introspection"""
+    """A base class for introspection."""
+
     pass
 
 
-def expose_as(name, base, *methods):
-    return expose(base, *methods, name=name)
-
+# TODO: Proofread doc string.
+# Why expose and expose_as? Could this be reduced to a single function?
 
 def expose(base, *methods, **kwargs):
+    """See documentation for spectate.expose_as."""
     classdict = {}
     for method in methods:
         if not hasattr(base, method):
@@ -201,12 +202,49 @@ def expose(base, *methods, **kwargs):
     return type(name, (base, WatchableType), classdict)
 
 
+# TODO: Proofread doc string.
+def expose_as(name, base, *methods):
+    """Expose a type as a WatchableType with methods that are exposed callbacks.
+
+    Parameters
+    ----------
+    name : str
+    base : obj:
+        A type such as list or dict.
+    methods : str
+        A str representation of the methods to expose.
+
+    Returns
+    -------
+    exposed : obj:
+        A WatchableType in the form of `spectate.spectate.name`
+    """
+    exposed = expose(base, *methods, name=name)
+    return exposed
+
+
+# TODO: Proofread doc string.
 def watchable(value):
+    """Return a boolean if value class is WatchableType."""
     check = issubclass if inspect.isclass(value) else isinstance
     return check(value, WatchableType)
 
 
+# TODO: Proofread doc string.
 def watch(value, *args, **kwargs):
+    """Return a WatchableType with it's spectator from a WatchableType.
+
+    In order to register callbacks to an eventful object, you need to create
+    a Spectator that will watch it for you. A Spectator is a relatively simple
+    object that has methods for adding, deleting, and triggering callbacks. To
+    create a spectator we call spectator = watch(x), where x is a
+    WatchableType.
+
+    Parameters
+    ----------
+    value : obj:
+        WatchableType
+    """
     if inspect.isclass(value):
         value = value(*args, **kwargs)
         return value, watch(value)
