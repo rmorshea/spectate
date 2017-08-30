@@ -1,4 +1,5 @@
 from __future__ import print_function
+from setuptools import find_packages
 
 # the name of the project
 name = "spectate"
@@ -15,8 +16,6 @@ if v[:2] < (2,7) or (v[0] >= 3 and v[:2] < (3,3)):
     print(error, file=sys.stderr)
     sys.exit(1)
 
-PY3 = (sys.version_info[0] >= 3)
-
 #-----------------------------------------------------------------------------
 # get on with it
 #-----------------------------------------------------------------------------
@@ -26,41 +25,51 @@ from glob import glob
 
 from distutils.core import setup
 
-pjoin = os.path.join
 here = os.path.abspath(os.path.dirname(__file__))
-pkg_root = pjoin(here, name)
+root = os.path.join(here, name)
 
-packages = []
-for d, _, _ in os.walk(pjoin(here, name)):
-    if os.path.exists(pjoin(d, '__init__.py')):
-        packages.append(d[len(here)+1:].replace(os.path.sep, '.'))
+packages = find_packages()
 
-version_ns = {}
-with open(pjoin(here, name, '_version.py')) as f:
-    exec(f.read(), {}, version_ns)
+with open(os.path.join(root, 'version.py')) as f:
+    namespace = {}
+    exec(f.read(), {}, namespace)
+    version = namespace["__version__"]
 
-with open("summary.rst", "r") as f:
-	long_description = f.read()
+long_description = """
+Spectate
+========
+Create classes whose instances have tracked methods
+
+``spectate`` is useful for remotely tracking how an instance is modified. This means that protocols
+for managing updates, don't need to be the outward responsibility of a user, and can instead be
+done automagically in the background.
+
+For example, if it were desirable to keep track of element changes in a list, ``spectate`` could be
+used to observe ``list.__setitiem__`` in order to be notified when a user sets the value of an element
+in the list. To do this, we would first create an ``elist`` type using ``expose_as``, construct an
+instance of that type, and then store callback pairs to that instance's spectator. To access a spectator,
+register one with ``watch`` (e.g. ``spectator = watch(the_elist)``), retrieve a preexisting one with the
+``watcher`` function. Callback pairs are stored by calling the ``watcher(the_list).callback`` method. You
+can then specify, with keywords, whether the callback should be triggered ``before``, and/or or ``after``
+a given method is called - hereafter refered to as "beforebacks" and "afterbacks" respectively.
+"""
 
 setup_args = dict(
 	name = name,
-    version = version_ns['__version__'],
-    scripts = glob(pjoin('scripts', '*')),
+    version = version,
     packages = packages,
     description = "Create classes whose instances have tracked methods",
     long_description = long_description,
     author = "Ryan Morshead",
     author_email = "ryan.morshead@gmail.com",
-    url = "https://github.com/rmorshea/dstruct",
+    url = "https://github.com/rmorshea/spectate",
     license = 'MIT',
     platforms = "Linux, Mac OS X, Windows",
-    keywords = ["spectate", "instance", "changes", "wrapper"],
+    keywords = ["eventful", "callbacks"],
     classifiers = [
         'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research',
         'Programming Language :: Python',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         ],
 )
