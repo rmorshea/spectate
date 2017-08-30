@@ -8,14 +8,14 @@ Create classes whose instances have tracked methods
 
 Instalation
 -----------
-``spectate`` can be installed from GitHub using ``pip``:
 
-.. code:: text
-    
-    $ pip install git+https://github.com/rmorshea/spectate.git#egg=spectate
+stable : ``pip install spectate``
+
+master: ``pip install git+https://github.com/rmorshea/spectate.git#egg=spectate``
 
 Basic Usage
 -----------
+
 ``spectate`` is useful for remotely tracking how an instance is modified. This means that protocols
 for managing updates, don't need to be the outward responsibility of a user, and can instead be
 done automagically in the background.
@@ -35,10 +35,13 @@ Beforebacks
 + Have a signature of ``(instance, call)``
 
     +   ``instance`` is the owner of the method
+
     +   ``call`` is a ``Bunch`` with the keys:
 
         + ``'name'`` - the name of the method which was called
+
         + ``'args'`` - the arguments which that method will call
+
         + ``'kwargs'`` - the keywords which that method will call
 
 +   Can ``return`` a value which gets passed on to its respective afterback.
@@ -49,10 +52,13 @@ Afterbacks
 +   Have a signature of ``(instance, answer)``
 
     +   ``instance`` is the owner of the method
+
     +   ``answer`` is a ``Bunch`` with the keys:
 
         +   ``'name'`` - the name of the method which was called
+
         +   ``'value'`` - the value returned by the method
+
         +   ``'before'`` - the value returned by the respective beforeback
 
 + Should not ``return``
@@ -103,6 +109,8 @@ spectator is notified, and will print once the action is complete:
     elist[0] = 0
 
 Prints ``{0: 1} -> {0: 0}``
+
+<...more examples `https://github.com/rmorshea/spectate/tree/master/examples`>_
 
 Under The Hood
 --------------
