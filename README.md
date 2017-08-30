@@ -12,7 +12,7 @@ Create classes whose instances have tracked methods
 
 + stable : `pip install spectate`
 + master : `pip install git+https://github.com/rmorshea/spectate.git#egg=spectate`
-
++ developer : `git clone https://github.com/rmorshea/spectate; cd spectate/; pip install -e .`
 
 ## Basic Usage
 
