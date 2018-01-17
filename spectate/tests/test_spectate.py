@@ -32,7 +32,7 @@ def test_watch():
     assert wt._instance_spectator is spectator
 
     WatchableList = expose_as("WatchableList", list, "append")
-    wl, spectator = watch(WatchableList, [1, 2, 3])
+    wl, spectator = watched(WatchableList, [1, 2, 3])
 
     assert wl == [1, 2, 3]
     assert isinstance(spectator, Spectator)
@@ -42,7 +42,7 @@ def test_watch():
 
 def test_watched():
     WatchableThing = expose_as("WatchableThing", Thing, "func")
-    wt, spectator = watch(WatchableThing)
+    wt, spectator = watched(WatchableThing)
 
     assert isinstance(spectator, Spectator)
     assert hasattr(wt, "_instance_spectator")
@@ -54,13 +54,13 @@ def test_watched():
 
 def test_watcher():
     WatchableThing = expose_as("WatchableThing", Thing, "func")
-    wt, spectator = watch(WatchableThing)
+    wt, spectator = watched(WatchableThing)
     assert watcher(wt) is spectator
 
 
 def test_unwatch():
     WatchableThing = expose_as("WatchableThing", Thing, "func")
-    wt, spectator = watch(WatchableThing)
+    wt, spectator = watched(WatchableThing)
     out = unwatch(wt)
     assert not hasattr(wt, "_instance_spectator")
     assert out is spectator
@@ -75,7 +75,7 @@ def test_method_spectator():
     assert append.basemethod is list.append
     assert append.name == 'append'
 
-    wl, spectator = watch(WatchableList)
+    wl, spectator = watched(WatchableList)
     wl.append(1)
     wl.append(2)
     assert wl == [1, 2]
@@ -83,7 +83,7 @@ def test_method_spectator():
 
 def test_method_spectator_argspec():
     WatchableThing = expose_as("WatchableThing", Thing, 'func')
-    thing, sectator = watch(WatchableThing)
+    thing, sectator = watched(WatchableThing)
     assert MethodSpectator._compile_count == 2
     assert (inspect.getargspec(Thing().func) ==
         inspect.getargspec(thing.func))
@@ -170,7 +170,7 @@ def test_callback_multiple():
             pass
 
     WatchableTest = expose(Test, "a", "b")
-    wt, spectator = watch(WatchableTest)
+    wt, spectator = watched(WatchableTest)
 
     callback = lambda value, call: None
 
