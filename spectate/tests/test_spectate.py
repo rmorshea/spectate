@@ -169,7 +169,7 @@ def test_callback_multiple():
         def b(self):
             pass
 
-    WatchableTest = expose(Test, "a", "b")
+    WatchableTest = expose_as("WatchableTest", Test, "a", "b")
     wt, spectator = watched(WatchableTest)
 
     callback = lambda value, call: None
