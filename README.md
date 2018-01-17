@@ -91,13 +91,14 @@ spectator is notified, and will print once the action is complete:
     # if a WatchableType is passed to watch, any following
     # arguments are passed to it constructor. Thus a new
     # instance is returned along with its spectator
-    elist, spectator = watch(elist, [1, 2, 3])
+    l = elist([1, 2, 3]]
+    spectator = watch(l)
 
     spectator.callback('__setitem__',
         before=pass_on_old_value,
         after=print_element_change)
 
-    elist[0] = 0
+    l[0] = 0
 ```
 
 Prints `{0: 1} -> {0: 0}`
