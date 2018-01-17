@@ -1,7 +1,6 @@
 import inspect
-from ..spectate import (expose, expose_as, watch, watcher,
-    unwatch, watchable, WatchableType, MethodSpectator,
-    Spectator, Bunch)
+from ..spectate import (expose_as, watch, watched, watcher, unwatch,
+    watchable, WatchableType, MethodSpectator, Spectator, Bunch)
 
 
 def test_watchable():
@@ -9,9 +8,8 @@ def test_watchable():
     assert watchable(WatchableType())
 
 
-def test_expose():
-    WatchableList = expose(list, 'append', name="WatchableList")
-
+def test_expose_as():
+    WatchableList = expose_as("WatchableList", list, 'append')
     assert watchable(WatchableList)
     assert issubclass(WatchableList, list)
     assert WatchableList.__name__ == 'WatchableList'
@@ -19,8 +17,9 @@ def test_expose():
 
 
 class Thing(object):
-        def func(self, a, b, c=None, d=None, *e, **f):
-            return (self, a, b, c, d, e, f)
+
+    def func(self, a, b, c=None, d=None, *e, **f):
+        return (self, a, b, c, d, e, f)
 
 
 def test_watch():
@@ -39,6 +38,18 @@ def test_watch():
     assert isinstance(spectator, Spectator)
     assert hasattr(wl, "_instance_spectator")
     assert wl._instance_spectator is spectator
+
+
+def test_watched():
+    WatchableThing = expose_as("WatchableThing", Thing, "func")
+    wt, spectator = watch(WatchableThing)
+
+    assert isinstance(spectator, Spectator)
+    assert hasattr(wt, "_instance_spectator")
+    assert wt._instance_spectator is spectator
+
+    # Since watched uses watch under the hood
+    # we don't need the remainder of the tests.
 
 
 def test_watcher():
@@ -151,8 +162,10 @@ def test_callback_closure():
 def test_callback_multiple():
 
     class Test(object):
+
         def a(self):
             pass
+
         def b(self):
             pass
 
