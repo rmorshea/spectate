@@ -327,7 +327,7 @@ def watched(cls, *args, **kwargs):
 
 
 def unwatch(value):
-    """Return the ``Spectator`` of a ``WatchableType`` instance.""""
+    """Return the ``Spectator`` of a ``WatchableType`` instance."""
     if not isinstance(value, WatchableType):
         raise TypeError("Expected a WatchableType, not %r." % value)
     spectator = watcher(value)
