@@ -30,7 +30,7 @@ root = os.path.join(here, name)
 
 packages = find_packages()
 
-with open(os.path.join(root, 'version.py')) as f:
+with open(os.path.join(root, '_version.py')) as f:
     namespace = {}
     exec(f.read(), {}, namespace)
     version = namespace["__version__"]
