@@ -1,2 +1,12 @@
+# -------------
+# Documentation
+# -------------
+
+sphinxcontrib-napoleon
+sphinx_materialdesign_theme
+
+# -------
+# Testing
+# -------
+
 pytest
-six

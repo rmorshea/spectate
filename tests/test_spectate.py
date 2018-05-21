@@ -1,11 +1,31 @@
+import sys
 import inspect
-from ..spectate import (expose_as, watch, watched, watcher, unwatch,
-    watchable, WatchableType, MethodSpectator, Spectator, Bunch)
+from spectate import (
+    expose, expose_as, watch, watched,
+    watcher, unwatch, watchable, Watchable,
+    MethodSpectator, Spectator, Bunch,
+)
 
 
 def test_watchable():
-    assert watchable(WatchableType)
-    assert watchable(WatchableType())
+    assert watchable(Watchable)
+    assert watchable(Watchable())
+
+
+def test_expose():
+
+    @expose('increment')
+    class Counter(object):
+
+        def __init__(self):
+            self.x = 0
+
+        def increment(self, amount=1):
+            self.x += amount
+
+    assert watchable(Counter)
+    assert Counter.__name__ == 'Counter'
+    assert isinstance(Counter.increment, MethodSpectator)
 
 
 def test_expose_as():
@@ -183,3 +203,22 @@ def test_callback_multiple():
     spectator.remove_callback(("a", "b"), callback)
 
     assert spectator._callback_registry == {}
+
+
+if not sys.version_info < (3, 6):
+
+    def test_subclass_override():
+
+        @expose('method')
+        class Parent:
+
+            def method(self):
+                pass
+
+        class Child(Parent):
+
+            def method(self):
+                pass
+
+        assert watchable(Child)
+        assert isinstance(Child.method, MethodSpectator)

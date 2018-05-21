@@ -1,10 +1,21 @@
 # See End Of File For Licensing
 
-
 import re
+import sys
 import six
 import types
 import inspect
+
+__all__ = [
+    'expose',
+    'expose_as',
+    'watch',
+    'watched',
+    'unwatch',
+    'watcher',
+    'watchable',
+    'Watchable'
+]
 
 
 def getargspec(func):
@@ -42,23 +53,25 @@ class Bunch(dict):
 class Spectator(object):
 
     def __init__(self, subclass):
-        """Create a Spectator that can be registered to a ``WatchableType`` instance.
-        
+        """Create a Spectator that can be registered to a :class:`Watchable` instance.
+
         Parameters
         ----------
         subclass: type
-            A the ``WatchableType`` subclass whose instance this ``Spectator`` can respond to.
+            A the :class:`Watchable` subclass whose instance this :class:`Specatator` can respond to.
         """
+        if not issubclass(subclass, Watchable):
+            raise TypeError('Expected a Watchable, not %r.' % subclass)
         self.subclass = subclass
         self._callback_registry = {}
 
     def callback(self, name, before=None, after=None):
         """Add a callback pair to this spectator.
-        
+
         You can specify, with keywords, whether each callback should be triggered
         before, and/or or after a given method is called - hereafter refered to as
         "beforebacks" and "afterbacks" respectively.
-        
+
         Parameters
         ----------
         name: str
@@ -66,13 +79,13 @@ class Spectator(object):
         before: None or callable
             A callable of the form ``before(obj, call)`` where ``obj`` is
             the instance which called a watched method, and ``call`` is a
-            ``Bunch`` containing the name of the called method, along with
+            :class:`Bunch` containing the name of the called method, along with
             its positional and keyword arguments under the attributes "name"
             "args", and "kwargs" respectively.
         after: None or callable
             A callable of the form ``after(obj, answer)`` where ``obj` is
             the instance which alled a watched method, and ``answer`` is a
-            ``Bunch`` containing the name of the called method, along with
+            :class:`Bunch` containing the name of the called method, along with
             the value it returned, and data ``before`` may have returned
             under the attributes "name", "value", and "before" respectively.
         """
@@ -99,11 +112,11 @@ class Spectator(object):
 
     def remove_callback(self, name, before=None, after=None):
         """Remove a beforeback, and afterback pair from this Spectator
-        
+
         If ``before`` and ``after`` are None then all callbacks for
         the given method will be removed. Otherwise, only the exact
         callback pair will be removed.
-        
+
         Parameters
         ----------
         name: str
@@ -130,10 +143,7 @@ class Spectator(object):
                 del self._callback_registry[name]
 
     def wrapper(self, name, args, kwargs):
-        """A callback made prior to calling the given base method
-        
-        The base method is retrieved from the ``WatchableType``
-        subclass given in ``Spectator.__init__``.
+        """Trigger a method along with its beforebacks and afterbacks.
 
         Parameters
         ----------
@@ -185,16 +195,14 @@ class MethodSpectator(object):
     args, vargs, kwargs = {args}, {varargs}, {keywords};
     return globals()["spectator"].wrapper('{name}', (args + vargs), kwargs)"""
 
-    def __init__(self, base, name):
-        self.name = name
-        self.base = base
+    def __init__(self, basemethod, name=None):
+        if not callable(basemethod):
+            raise TypeError('Expected a callable, not %r' % basemethod)
+        self.basemethod = basemethod
+        self.name = name or basemethod.__name__
         aspec = getargspec(self.basemethod)
         self.defaults = aspec.defaults
         self.code, self.defaults = self._code(aspec)
-
-    @property
-    def basemethod(self):
-        return getattr(self.base, self.name)
 
     def _code(self, aspec):
         args = str(aspec.args or ())[1:-1].replace("'", "")
@@ -237,12 +245,48 @@ class MethodSpectator(object):
             return types.MethodType(self.basemethod, inst)
 
 
-class WatchableType(object):
+class Watchable(object):
     """A base class for introspection."""
-    pass
+
+    if not sys.version_info < (3, 6):
+
+        def __init_subclass__(cls, **kwargs):
+            """If a subclass overrides a :class:`MethodSpectator` method, then rewrap it."""
+            for base in cls.mro()[1:]:
+                if issubclass(base, Watchable):
+                    for k, v in base.__dict__.items():
+                        if k in cls.__dict__ and isinstance(v, MethodSpectator):
+                            new = getattr(cls, k)
+                            if callable(new) and not isinstance(new, MethodSpectator):
+                                method_spectator = MethodSpectator(new, k)
+                                setattr(cls, k, method_spectator)
+            super().__init_subclass__(**kwargs)
 
 
-# TODO: Proofread doc string.
+def expose(*methods):
+    """A decorator for exposing the methods of a class.
+
+    Parameters
+    ----------
+    *methods : str
+        A str representation of the methods that should be exposed to callbacks.
+
+    Returns
+    -------
+    decorator : function
+        A function accepting one argument - the class whose methods will be
+        exposed - and which returns a new :class:`Watchable` that will
+        notify a :class:`Spectator` when those methods are called.
+
+    Notes
+    -----
+    This is essentially a decorator version of :func:`expose_as`
+    """
+    def setup(base):
+        return expose_as(base.__name__, base, *methods)
+    return setup
+
+
 def expose_as(name, base, *methods):
     """Return a new type with certain methods that are exposed to callback registration.
 
@@ -252,13 +296,13 @@ def expose_as(name, base, *methods):
         The name of the new type.
     base : type
         A type such as list or dict.
-    methods : str
+    *methods : str
         A str representation of the methods that should be exposed to callbacks.
 
     Returns
     -------
     exposed : obj:
-        A ``WatchableType`` with methods that will notify a ``Spectator``.
+        A :class:`Watchable` with methods that will notify a :class:`Spectator`.
     """
     classdict = {}
     for method in methods:
@@ -266,57 +310,58 @@ def expose_as(name, base, *methods):
             raise AttributeError("Cannot expose '%s', because '%s' "
                 "instances lack this method" % (method, base.__name__))
         else:
-            classdict[method] = MethodSpectator(base, method)
-    return type(name, (base, WatchableType), classdict)
+            classdict[method] = MethodSpectator(getattr(base, method), method)
+    return type(name, (base, Watchable), classdict)
 
 
-# TODO: Proofread doc string.
 def watchable(value):
-    """Returns True if the given value is a subclass or instance of ``WatchableType``."""
+    """Returns True if the given value is a subclass or instance of :class:`Watchable`."""
     check = issubclass if inspect.isclass(value) else isinstance
-    return check(value, WatchableType)
+    return check(value, Watchable)
 
 
-# TODO: Proofread doc string.
-def watch(value, *args, **kwargs):
-    """Register a ``Specatator`` to a ``WatchableType`` and return it.
+def watch(value, spectator_type=Spectator):
+    """Register a :class:`Specatator` to a :class:`Watchable` and return it.
 
     In order to register callbacks to an eventful object, you need to create
-    a Spectator that will watch it for you. A ``Spectator`` is a relatively simple
+    a Spectator that will watch it for you. A :class:`Specatator` is a relatively simple
     object that has methods for adding, deleting, and triggering callbacks. To
-    create a spectator we call ``spectator = watch(x)``, where x is a WatchableType
+    create a spectator we call ``spectator = watch(x)``, where x is a Watchable
     instance.
 
     Parameters
     ----------
-    value : WatchableType
-        A ``WatchableType`` instance.
-    
+    value : Watchable
+        A :class:`Watchable` instance.
+    spectator_type : Spectator
+        The type of spectator that will be returned.
+
     Returns
     -------
-    spectator: Spectator
-        The ``Spectator`` registered to the given instance.
+    spectator: spectator_type
+        The :class:`Specatator` (specified by ``spectator_type``) that is
+        was registered to the given instance.
     """
-    if isinstance(value, WatchableType):
+    if isinstance(value, Watchable):
         wtype = type(value)
     else:
-        raise TypeError("Expected a WatchableType, not %r." % value)
+        raise TypeError("Expected a Watchable, not %r." % value)
     spectator = getattr(value, "_instance_spectator", None)
     if not isinstance(spectator, Spectator):
-        spectator = Spectator(wtype)
+        spectator = spectator_type(wtype)
         value._instance_spectator = spectator
     return spectator
 
 
 def watched(cls, *args, **kwargs):
-    """Create and return a ``WatchableType`` with its ``Spectator``.
-    
-    See ``watch`` for more info on ``Spectator`` registration.
-    
+    """Create and return a :class:`Watchable` with its :class:`Specatator`.
+
+    See :func:`watch` for more info on :class:`Specatator` registration.
+
     Parameters
     ----------
     cls: type:
-        A subclass of ``WatchableType``
+        A subclass of :class:`Watchable`
     *args:
         Positional arguments used to create the instance
     **kwargs:
@@ -327,9 +372,9 @@ def watched(cls, *args, **kwargs):
 
 
 def unwatch(value):
-    """Return the ``Spectator`` of a ``WatchableType`` instance."""
-    if not isinstance(value, WatchableType):
-        raise TypeError("Expected a WatchableType, not %r." % value)
+    """Return the :class:`Specatator` of a :class:`Watchable` instance."""
+    if not isinstance(value, Watchable):
+        raise TypeError("Expected a Watchable, not %r." % value)
     spectator = watcher(value)
     try:
         del value._instance_spectator
@@ -339,9 +384,9 @@ def unwatch(value):
 
 
 def watcher(value):
-    """Return the ``Spectator`` of a ``WatchableType`` instance."""
-    if not isinstance(value, WatchableType):
-        raise TypeError("Expected a WatchableType, not %r." % value)
+    """Return the :class:`Specatator` of a :class:`Watchable` instance."""
+    if not isinstance(value, Watchable):
+        raise TypeError("Expected a Watchable, not %r." % value)
     return getattr(value, "_instance_spectator", None)
 
 
