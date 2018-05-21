@@ -1,6 +1,6 @@
 import sys
 import inspect
-from spectate import (
+from spectate.spectate import (
     expose, expose_as, watch, watched,
     watcher, unwatch, watchable, Watchable,
     MethodSpectator, Spectator, Bunch,
