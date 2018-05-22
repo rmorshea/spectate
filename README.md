@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/rmorshea/spectate.svg)](https://travis-ci.org/rmorshea/spectate)
 [![Documentation Status](https://readthedocs.org/projects/python-spectate/badge/?version=latest)](http://python-spectate.readthedocs.io/en/latest/?badge=latest)
+[![Version Info](https://img.shields.io/pypi/v/spectate.svg)](https://pypi.python.org/pypi/spectate)
+
 
 # Spectate
 
