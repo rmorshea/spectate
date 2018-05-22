@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/rmorshea/spectate.svg)](https://travis-ci.org/rmorshea/spectate)
-
+[![Documentation Status](https://readthedocs.org/projects/python-spectate/badge/?version=latest)](http://python-spectate.readthedocs.io/en/latest/?badge=latest)
 
 # Spectate
 
