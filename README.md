@@ -72,7 +72,7 @@ And thus print out the following:
 -2
 ```
 
-[... see more detailed usage examples. ](https://github.com/rmorshea/spectate/tree/master/examples)
+[... see more examples. ](https://github.com/rmorshea/spectate/tree/master/examples)
 
 
 ## Kinds of Callbacks
@@ -105,11 +105,11 @@ Have a signature of `(instance, answer)`
 
 ### Closures
 
-Have a signature of ``(value)``
+Have a signature of `(value)`
 
-+ ``'value'`` - the value returned by the method
++ `'value'` - the value returned by the method
 + All other information is already contained in the closures scope.
-+ Should not ``return`` anything.
++ Should not `return` anything.
 
 
 # Under The Hood

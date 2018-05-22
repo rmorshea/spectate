@@ -16,6 +16,7 @@ Undefined = Sentinel('Undefined')
 
 
 class List(Model, list):
+    """An MVC enabled ``list``."""
 
     @control.before('__setitem__')
     def _control_setitem(self, call, notify):
@@ -102,6 +103,7 @@ class List(Model, list):
 
 
 class Dict(Model, dict):
+    """An MVC enabled ``dict``."""
 
     @control.before('__setitem__', 'setdefault')
     def _control_setitem(self, call, notify):
@@ -159,6 +161,7 @@ class Dict(Model, dict):
 
 
 class Set(Model, set):
+    """An MVC enabled ``set``."""
 
     @control.before(
         "clear", "update", "difference_update", "intersection_update",
