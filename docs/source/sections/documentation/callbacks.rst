@@ -14,7 +14,7 @@ Have a signature of ``(instance, call)``
     + ``'name'`` - the name of the method which was called
     + ``'args'`` - the arguments which that method will call
     + ``'kwargs'`` - the keywords which tCallbacks are registered to specific methods in pairs - one will be triggered before, and the other after, a call to that method is made. These two callbacks are referred to as "beforebacks" and "afterbacks" respectively. Defining both a beforeback and an afterback in each pair is not required, but doing so allows a beforeback to pass data to its corresponding afterback.
-+ Can ``return`` a value which gets passed on to its respective afterback, or a `Closure`_ that itself gets treated as an afterback.
++ Can ``return`` a value which gets passed on to its respective afterback, or a `Closures`_ that itself gets treated as an afterback.
 
 
 Afterbacks
