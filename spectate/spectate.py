@@ -1,5 +1,6 @@
 # See End Of File For Licensing
 
+
 import re
 import sys
 import six
@@ -29,8 +30,8 @@ def getargspec(func):
 class Bunch(dict):
     # Copyright (c) Jupyter Development Team.
     # Distributed under the terms of the Modified BSD License.
-
     """A dict with attribute-access"""
+
     def __getattr__(self, key):
         try:
             return self.__getitem__(key)
@@ -51,6 +52,7 @@ class Bunch(dict):
 
 
 class Spectator(object):
+    """An object for holding callbacks"""
 
     def __init__(self, subclass):
         """Create a Spectator that can be registered to a :class:`Watchable` instance.
@@ -189,6 +191,7 @@ class Spectator(object):
 
 
 class MethodSpectator(object):
+    """Notifies a :class:`Specator` when the method this descriptor wraps is called."""
 
     _compile_count = 0
     _src_str = """def {name}({signature}):
@@ -246,7 +249,11 @@ class MethodSpectator(object):
 
 
 class Watchable(object):
-    """A base class for introspection."""
+    """A base class for introspection.
+
+    And in Python>=3.6 rewraps overriden methods with a :class:`MethodSpectator`
+    if appropriate.
+    """
 
     if not sys.version_info < (3, 6):
 

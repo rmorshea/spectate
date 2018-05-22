@@ -1,3 +1,14 @@
+"""
+MVC
+===
+
+.. automodule:: spectate.mvc.base
+    :members:
+
+.. automodule:: spectate.mvc.models
+    :members:
+"""
+
 import sys
 
 if sys.version_info < (3, 6):
