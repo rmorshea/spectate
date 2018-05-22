@@ -3,114 +3,220 @@
 
 # Spectate
 
+A library for Python 2 and 3 that can track changes to mutable data types.
 
-Create classes whose instances have tracked methods
+With `spectate` complicated protocols for managing updates, don't need to be the outward responsibility of a user, and can instead be done automagically in the background. For instance, syncing the state between a server and client can controlled by `spectate` so user's don't have to.
 
 
-## Installation
-
+# Install
 
 + stable : `pip install spectate`
 + master : `pip install git+https://github.com/rmorshea/spectate.git#egg=spectate`
-+ developer : `git clone https://github.com/rmorshea/spectate; cd spectate/; pip install -e .`
-
-## Basic Usage
++ developer : `git clone https://github.com/rmorshea/spectate && cd spectate/ && pip install -e . -r requirements.txt`
 
 
-`spectate` is useful for remotely tracking how an instance is modified. This means that protocols
-for managing updates, don't need to be the outward responsibility of a user, and can instead be
-done automagically in the background.
+# Usage
 
-For example, if it were desirable to keep track of element changes in a list, `spectate` could be
-used to observe `list.__setitiem__` in order to be notified when a user sets the value of an element
-in the list. To do this, we would first create an `elist` type using `expose_as`, construct an
-instance of that type, and then store callback pairs to that instance's spectator. To access a spectator,
-register one with `watch` (e.g. `spectator = watch(the_elist)`), retrieve a preexisting one with the
-`watcher` function. Callback pairs are stored by calling the `watcher(the_list).callback` method. You
-can then specify, with keywords, whether the callback should be triggered `before`, and/or or `after`
-a given method is called - hereafter refered to as "beforebacks" and "afterbacks" respectively.
+```python
+from spectate import expose, watch
+```
+
+Expose any desired method of a class so it can be watched.
+
+```python
+@expose('increment', 'decrement')
+class Counter(object):
+
+    def __init__(self):
+        self.x = 0
+
+    def increment(self, amount):
+        self.x += amount
+
+    def decrement(self, amount):
+        self.x -= amount
+```
+
+Create an instance of the new watchable class, and get its spectator.
+
+```python
+counter = Counter()
+spectator = watch(counter)
+```
+
+Register a callback to the methods you exposed.
+
+```python
+def changed(counter, answer):
+    print(counter.x)
+
+spectator.callback('increment', after=changed)
+spectator.callback('decrement', after=changed)
+```
+
+Normal usage of the exposed methods will trigger your callback.
+
+```python
+counter.increment(1)
+counter.decrement(2)
+counter.increment(3)
+counter.decrement(4)
+```
+
+And thus print out the following:
+
+```
+1
+-1
+2
+-2
+```
+
+[... see more detailed usage examples. ](https://github.com/rmorshea/spectate/tree/master/examples)
+
+
+## Kinds of Callbacks
+
+Callbacks are registered to specific methods in pairs - one will be triggered before, and the other after, a call to that method is made. These two callbacks are referred to as "beforebacks" and "afterbacks" respectively. Defining both a beforeback and an afterback in each pair is not required, but doing so allows a beforeback to pass data to its corresponding afterback.
 
 
 ### Beforebacks
 
+Have a signature of `(instance, call)`
 
-+ Have a signature of `(instance, call)`
-    + `instance` is the owner of the method
-    + `call` is a `Bunch` with the keys
-        + `'name'` - the name of the method which was called
-        + `'args'` - the arguments which that method will call
-        + `'kwargs'` - the keywords which that method will call
-+ Can `return` a value which gets passed on to its respective afterback.
++ `instance` is the owner of the method
++ `call` is a `dict` with the keys
+    + `'name'` - the name of the method which was called
+    + `'args'` - the arguments which that method will call
+    + `'kwargs'` - the keywords which that method will call
++ Can `return` a value which gets passed on to its respective afterback, or a [Closure](#Closure) that itself gets treated as an afterback.
 
 
 ### Afterbacks
 
+Have a signature of `(instance, answer)`
 
-+ Have a signature of `(instance, answer)`
-    + `instance` is the owner of the method
-    + `answer` is a `Bunch` with the keys
-        + `'name'` - the name of the method which was called
-        + `'value'` - the value returned by the method
-        + `'before'` - the value returned by the respective beforeback
-
-
-## Example
++ `instance` is the owner of the method
++ `answer` is a `dict` with the keys
+    + `'name'` - the name of the method which was called
+    + `'value'` - the value returned by the method
+    + `'before'` - the value returned by the respective beforeback
 
 
-```python
-    from spectate import expose_as
+### Closures
 
-    elist = expose_as('elist', list, '__setitem__')
+Have a signature of ``(value)``
 
-    def pass_on_old_value(inst, call):
-        """The beforeback"""
-        index = call.args[0]
-        old = inst[index]
-        return index, old
-
-    def print_element_change(inst, answer):
-        """The afterback"""
-        # answer.before = pass_on_old_value(call)
-        index, old = answer.before
-        new = inst[index]
-        if new != old:
-            print("{%s: %s} -> {%s: %s}" %
-                (index, old, index, new))
-```
-
-`pass_on_old_value` simply pulls the old value stored at the given index, and then passes
-that value and the index on to its afterback. The afterback then checks to see if the value
-which is `now` stored at that index, is equal to the value which `was` stored there. If it is,
-nothing happens, however if it isn't, the change gets printed.
-
-Instances of `EventfulList` will behave exactly like a `list` in every way. The only
-difference being that when a user decides to change the value of a preexisting element, the
-spectator is notified, and will print once the action is complete:
-
-```python
-    # if a WatchableType is passed to watch, any following
-    # arguments are passed to it constructor. Thus a new
-    # instance is returned along with its spectator
-    l = elist([1, 2, 3]]
-    spectator = watch(l)
-
-    spectator.callback('__setitem__',
-        before=pass_on_old_value,
-        after=print_element_change)
-
-    l[0] = 0
-```
-
-Prints `{0: 1} -> {0: 0}`
-
-**[...more examples](https://github.com/rmorshea/spectate/tree/master/examples)**
++ ``'value'`` - the value returned by the method
++ All other information is already contained in the closures scope.
++ Should not ``return`` anything.
 
 
 # Under The Hood
 
-
-Methods are tracked by using `expose` or (`expose_as`) to create a new class with `MethodSpectator`
+Methods are tracked by using `expose` or `expose_as` to create a new class with `MethodSpectator`
 descriptors in the place of specified methods. Then, a user will create a `Spectator` using `watch`
 which is stored on the instance under the attribute `_instance_spectator`. When a `MethodSpectator`
 is accessed through an instance, the descriptor will return a wrapper that will redirect to
 `Spectator.wrapper`, which triggers the beforebacks and afterbacks registered to the instance.
+
+
+# The Bleeding Edge
+
+> Everything beyond this point is available on `master` - these user facing features are experimental, untested, and subject to frequent **breaking** changes!
+
+
+## An MVC Framework
+
+
+If you're using Python 3.6 or greater, `spectate` provides an experimental
+Model-View-Controller (MVC) framework within the `spectate.mvc` package. Out of the box
+`spectate.mvc` provides three basic model types for `list`, `dict`, and `set`
+(Python's three built-in types that are mutable):
+
+
+```python
+from spectate import mvc
+
+
+d = mvc.Dict()
+l = mvc.List()
+s = mvc.Set()
+
+
+@mvc.view(d)
+@mvc.view(l)
+@mvc.view(s)
+def printer(event):
+    print(event)
+
+
+d['a'] = 1
+l.append(2)
+s.add(3)
+```
+
+```
+{'key': 'a', 'old': Undefined, 'new': 1}
+{'index': 0, 'old': Undefined, 'new': 2}
+{'new': {3}, 'old': set()}
+```
+
+
+For most users these built-in types should be enough, however if you're adventurous, then you can define your own `mvc.Model` types.
+
+Let's reconsider the simple `Counter` example from above, and see how we might reimplement that use case with `spectate.mvc`. To begin we must first create a class which inherits from `mvc.Model` - a base class where we can define `mvc.control` methods. These controls ultimately notify views which are hooked into the model:
+
+
+```python
+from spectate import mvc
+
+
+class Counter(mvc.Model):
+
+    def __init__(self):
+        self.x = 0
+
+    def increment(self, amount):
+        self.x += amount
+
+    def decrement(self, amount):
+        self.x -= amount
+
+    # define a beforeback for increment and decrement
+    @mvc.control.before('increment', 'decrement')
+    def _control_change(self, call, notify):
+        return self.x
+
+    # create the corresponding afterback
+    @_control_change.after
+    def _control_change(self, answer, notify):
+        # Send an "event" dictionary to the Counter's views.
+        notify(old=answer.before, new=self.x)
+```
+
+
+Once we've defined our `Model` and its `control` methods, we can then use `mvc.view` as we saw above with `List`, `Dict`, and `Set`:
+
+
+```python
+counter = Counter()
+
+
+@mvc.view(counter)
+def printer(event):
+    print(event)
+
+
+counter.increment(1)
+counter.decrement(2)
+counter.increment(3)
+counter.decrement(4)
+```
+
+```
+{'old': 0, 'new': 1}
+{'old': 1, 'new': -1}
+{'old': -1, 'new': 2}
+{'old': 2, 'new': -2}
+```
