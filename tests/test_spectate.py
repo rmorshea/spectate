@@ -247,15 +247,15 @@ def test_none_is_empty_data():
 
 def test_data_evolution():
     d0 = Data(a=0)
-
     d1 = d0['b': 1]
     assert d1 == {'a': 0, 'b': 1}
-
     d2 = d1['b': 2, 'c': 3]
     assert d2 == {'a': 0, 'b': 2, 'c': 3}
-
-    d3 = d2['b': None, 'c': None]
-    assert d3 == d0
+    d3 = d2[{'b': 3, 'c': 4}]
+    d4 = d3['b': None, 'c': None]
+    assert d4 == d0
+    d5 = d4[{'a': None}]
+    assert d5 == {}
 
 def test_data_is_mapping():
     assert dict(Data(a=0, b=1)) == {'a': 0, 'b': 1}
