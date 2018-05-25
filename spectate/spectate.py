@@ -6,6 +6,7 @@ import sys
 import six
 import types
 import inspect
+import collections
 
 __all__ = [
     'expose',
@@ -15,7 +16,7 @@ __all__ = [
     'unwatch',
     'watcher',
     'watchable',
-    'Watchable'
+    'Watchable',
 ]
 
 
@@ -25,30 +26,6 @@ def getargspec(func):
     else:
         # no signature introspection is available for this type
         return inspect.ArgSpec(None, 'args', 'kwargs', None)
-
-
-class Bunch(dict):
-    # Copyright (c) Jupyter Development Team.
-    # Distributed under the terms of the Modified BSD License.
-    """A dict with attribute-access"""
-
-    def __getattr__(self, key):
-        try:
-            return self.__getitem__(key)
-        except KeyError:
-            raise AttributeError(key)
-
-    def __setattr__(self, key, value):
-        self.__setitem__(key, value)
-
-    def __dir__(self):
-        # py2-compat: can't use super because dict doesn't have __dir__
-        names = dir({})
-        names.extend(self.keys())
-        return names
-
-    def copy(self):
-        return Bunch(self)
 
 
 class Spectator(object):
@@ -81,13 +58,13 @@ class Spectator(object):
         before: None or callable
             A callable of the form ``before(obj, call)`` where ``obj`` is
             the instance which called a watched method, and ``call`` is a
-            :class:`Bunch` containing the name of the called method, along with
+            :class:`Data` containing the name of the called method, along with
             its positional and keyword arguments under the attributes "name"
             "args", and "kwargs" respectively.
         after: None or callable
             A callable of the form ``after(obj, answer)`` where ``obj` is
             the instance which alled a watched method, and ``answer`` is a
-            :class:`Bunch` containing the name of the called method, along with
+            :class:`Data` containing the name of the called method, along with
             the value it returned, and data ``before`` may have returned
             under the attributes "name", "value", and "before" respectively.
         """
@@ -167,7 +144,7 @@ class Spectator(object):
             hold = []
             for b in beforebacks:
                 if b is not None:
-                    call = Bunch(name=name,
+                    call = Data(name=name,
                         kwargs=kwargs.copy(),
                         args=args[1:])
                     v = b(args[0], call)
@@ -179,7 +156,7 @@ class Spectator(object):
 
             for a, bval in zip(afterbacks, hold):
                 if a is not None:
-                    a(args[0], Bunch(before=bval,
+                    a(args[0], Data(before=bval,
                         name=name, value=out))
                 elif callable(bval):
                     # the beforeback's return value was an
@@ -395,6 +372,53 @@ def watcher(value):
     if not isinstance(value, Watchable):
         raise TypeError("Expected a Watchable, not %r." % value)
     return getattr(value, "_instance_spectator", None)
+
+
+class Data(collections.Mapping):
+    """An immutable mapping where :obj:`None` represents an empty key."""
+
+    def __init__(self, *args, **kwargs):
+        items = dict(*args, **kwargs).items()
+        self.__dict__.update(i for i in items if i[1] is not None)
+
+    def __getattr__(self, key):
+        return None
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            key = (key,)
+        if isinstance(key, tuple):
+            for x in key:
+                if not isinstance(x, slice):
+                    break
+            else:
+                new = {s.start : s.stop for s in key}
+                return type(self)(self, **new)
+        return self.__dict__.get(key)
+
+    def __setitem__(self, key, value):
+        raise TypeError('%r is immutable')
+
+    def __setattr__(self, key, value):
+        raise TypeError('%r is immutable')
+
+    def __delitem__(self, key):
+        raise TypeError('%r is immutable')
+
+    def __delattr__(self, key):
+        raise TypeError('%r is immutable')
+
+    def __contains__(self, key):
+        return key in tuple(self)
+
+    def __iter__(self):
+        return iter(self.__dict__)
+
+    def __len__(self):
+        return len(self.__dict__)
+
+    def __repr__(self):
+        return repr(self.__dict__)
 
 
 # The MIT License (MIT)

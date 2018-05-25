@@ -7,6 +7,9 @@ MVC
 
 .. automodule:: spectate.mvc.models
     :members:
+
+.. automodule:: spectate.mvc.utils
+    :members:
 """
 
 import sys

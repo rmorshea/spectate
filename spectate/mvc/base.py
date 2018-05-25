@@ -1,9 +1,10 @@
 # See End Of File For Licensing
 
+from contextlib import contextmanager
 from functools import wraps, partial
 
 from .utils import completemethod
-from ..spectate import Watchable, Bunch, MethodSpectator, expose, watched
+from ..spectate import Watchable, Data, MethodSpectator, expose, watched
 
 __all__ = [
     'Model',
@@ -11,11 +12,49 @@ __all__ = [
     'control',
     'view',
     'unview',
+    'hold',
+    'mute',
 ]
 
 
 def is_model(x):
     return isinstance(x, Model)
+
+
+@contextmanager
+def hold(model):
+    if not is_model(model):
+        raise TypeError('Expected a Model, not %r.' % model)
+    events = []
+    redirect = lambda e : events.append(e)
+    restore = model.__dict__.get('_notify_model_views')
+    model._notify_model_views = redirect
+
+    try:
+        yield events
+    finally:
+        if restore is None:
+            del model._notify_model_views
+        else:
+            model._notify_model_views = restore
+        for e in events:
+            model._notify_model_views(e)
+
+
+@contextmanager
+def mute(model):
+    if not is_model(model):
+        raise TypeError('Expected a Model, not %r.' % model)
+    redirect = lambda e : None
+    restore = model.__dict__.get('_notify_model_views')
+    model._notify_model_views = redirect
+    try:
+        yield
+    finally:
+        if restore is None:
+            del model._notify_model_views
+        else:
+            model._notify_model_views = restore
 
 
 def view(model, select=None):
@@ -54,7 +93,7 @@ class control:
         @wraps(function)
         def callback(self, *args, **kwargs):
             def notify(*args, **kwargs):
-                event = Bunch(*args, **kwargs)
+                event = Data(*args, **kwargs)
                 self._notify_model_views(event)
             return function(self, *(args + (notify,)), **kwargs)
         return callback

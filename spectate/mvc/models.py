@@ -77,6 +77,10 @@ class List(Model, list):
         for i in range(answer.before, len(self)):
             notify(index=i, old=Undefined, new=self[i])
 
+    @control.after('pop')
+    def _control_pop(self, answer, notify):
+        notify(index=len(self), old=answer.value, new=Undefined)
+
     @control.before('remove')
     def _control_remove(self, call, notify):
         index = self.index(call.args[0])
