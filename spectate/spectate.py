@@ -394,6 +394,8 @@ class Data(collections.Mapping):
             else:
                 new = {s.start : s.stop for s in key}
                 return type(self)(self, **new)
+        if isinstance(key, collections.Mapping):
+            return type(self)(self, **key)
         return self.__dict__.get(key)
 
     def __setitem__(self, key, value):
