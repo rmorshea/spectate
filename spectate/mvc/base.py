@@ -1,9 +1,10 @@
 # See End Of File For Licensing
 
 from contextlib import contextmanager
-from functools import wraps, partial
+from functools import wraps
+from collections import defaultdict
 
-from .utils import completemethod
+from .utils import completemethod, memory_safe_function
 from ..spectate import Watchable, Data, MethodSpectator, expose, watched
 
 __all__ = [
@@ -57,25 +58,38 @@ def mute(model):
             model._notify_model_views = restore
 
 
-def view(model, select=None):
+def views(model):
     if not is_model(model):
-        raise TypeError('Expected a Model, not %r.' % model)
+        raise TypeError('%r is not a Model.' % model)
+    return {s : l[:] for s, l in model._model_views.items()}
+
+
+def view(*models, **select):
     def setup(function):
-        if select:
-            @wraps(function)
-            def wrapper(event):
-                if select(event):
-                    return function(event)
-            model._model_views.append(wrapper)
-            return wrapper
-        else:
-            model._model_views.append(function)
-            return function
+        # we want to avoid circular references.
+        safe = memory_safe_function(function)
+        for model in models:
+            if not is_model(model):
+                raise TypeError('%r is not a Model.' % model)
+            if not select:
+                model._model_views[None].append(safe)
+            else:
+                selector = model._model_event_selector.format(**select)
+                model._model_views[selector].append(safe)
+        return safe
     return setup
 
 
-def unview(model, function):
-    model._model_views.remove(function)
+def unview(*models, **select):
+    def setup(function):
+        for model in models:
+            if not is_model(model):
+                raise TypeError('%r is not a Model.' % model)
+            if select:
+                selector = model._model_event_selector.format(**select)
+            else:
+                selector = None
+            model._model_views[selector].remove(function)
 
 
 class control:
@@ -142,6 +156,7 @@ class control:
 class Model(Watchable):
 
     _model_controls = ()
+    _model_event_selector = ''
 
     def __init_subclass__(cls, **kwargs):
         for k, v in list(cls.__dict__.items()):
@@ -157,13 +172,17 @@ class Model(Watchable):
                 before = ctrl._wrap(ctrl._before)
                 after= ctrl._wrap(ctrl._after)
                 spectator.callback(method, before, after)
-        self._model_views = []
+        self._model_views = defaultdict(list)
         self.__init__(*args, **kwargs)
         return self
 
     def _notify_model_views(self, event):
-        for v in self._model_views:
-            v(event)
+        selector = self._model_event_selector.format(**event)
+        event = event['model': self]
+        for view in self._model_views[selector]:
+            view(event)
+        for view in self._model_views[None]:
+            view(event)
 
 
 # The MIT License (MIT)

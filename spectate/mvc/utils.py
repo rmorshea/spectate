@@ -1,4 +1,5 @@
 import types
+from weakref import proxy
 
 
 class Sentinel:
@@ -33,3 +34,74 @@ class completemethod:
             return types.MethodType(self._class_method, cls)
         else:
             return types.MethodType(self._instance_method, obj)
+
+
+def memory_safe_function(function):
+    """Return a function which has no outside references.
+
+    All the defauts, and closure of this function are turned into proxy objects
+    wherever possible. This creates a "memory safe" function (or at least safe
+    from circular references).
+
+    Parameters
+    ----------
+    function: FunctionType, MethodType
+        Only functions are allowed.
+
+    Returns
+    -------
+    ghost: FunctionType
+        A copy of the given function that is "memory safe".
+    """
+    if isinstance(function, types.MethodType):
+        self = as_proxy(function.__self__)
+        function = function.__func__
+    elif not isinstance(function, types.FunctionType):
+        raise TypeError('Expected a function or method, not %r.' % function)
+    else:
+        self = None
+    closure = to_closure(as_proxy(cell.cell_contents) for cell in function.__closure__ or ())
+    defaults = tuple(map(as_proxy, function.__defaults__ or ()))
+    safe = types.FunctionType(
+        function.__code__,
+        function.__globals__,
+        function.__name__,
+        defaults, closure)
+    if self is not None:
+        safe = types.MethodType(safe, self)
+    return safe
+
+
+def as_proxy(x):
+    if isinstance(x, list):
+        return list(map(as_proxy, x))
+    elif isinstance(x, tuple):
+        return tuple(map(as_proxy, x))
+    elif isinstance(x, set):
+        return set(map(as_proxy, x))
+    elif isinstance(x, dict):
+        return dict({as_proxy(k) : as_proxy(v) for k, v in x.items()})
+    elif isinstance(x, (types.FunctionType, types.MethodType)):
+        return memory_safe_function(x)
+    else:
+        try:
+            return proxy(x)
+        except TypeError:
+            return x
+
+
+def to_closure(args):
+    args = list(args)
+    if not args:
+        return ()
+    numbers = tuple(range(len(args)))
+    outer = '\n    '.join(map('out{0} = var{0}'.format, numbers))
+    inner = '\n        '.join(map('in{0} = out{0}'.format, numbers))
+    form = 'def outer():\n    {0}\n    def inner():\n        {1}\n    return inner'
+
+    variables = {'var%s' % i : x for i, x in enumerate(args)}
+    source = form.format(outer, inner)
+
+    exec(source, variables)
+
+    return variables['outer']().__closure__

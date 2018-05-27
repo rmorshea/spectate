@@ -109,6 +109,8 @@ class List(Model, list):
 class Dict(Model, dict):
     """An MVC enabled ``dict``."""
 
+    _model_selector_template = '{key}'
+
     @control.before('__setitem__', 'setdefault')
     def _control_setitem(self, call, notify):
         key = call.args[0]
