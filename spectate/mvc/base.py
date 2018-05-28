@@ -178,7 +178,6 @@ class Model(Watchable):
 
     def _notify_model_views(self, event):
         selector = self._model_event_selector.format(**event)
-        event = event['model': self]
         for view in self._model_views[selector]:
             view(event)
         for view in self._model_views[None]:

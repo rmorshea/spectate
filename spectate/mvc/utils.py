@@ -40,8 +40,8 @@ def memory_safe_function(function):
     """Return a function which has no outside references.
 
     All the defauts, and closure of this function are turned into proxy objects
-    wherever possible. This creates a "memory safe" function (or at least safe
-    from circular references).
+    wherever possible. This creates a "memory safe" function (with the exception
+    of global variables).
 
     Parameters
     ----------
@@ -60,27 +60,38 @@ def memory_safe_function(function):
         raise TypeError('Expected a function or method, not %r.' % function)
     else:
         self = None
+
     closure = to_closure(as_proxy(cell.cell_contents) for cell in function.__closure__ or ())
     defaults = tuple(map(as_proxy, function.__defaults__ or ()))
+
     safe = types.FunctionType(
         function.__code__,
-        function.__globals__,
+        function.__globals__, # globals are NOT safe.
         function.__name__,
-        defaults, closure)
+        defaults,
+        closure)
+
     if self is not None:
         safe = types.MethodType(safe, self)
     return safe
 
 
 def as_proxy(x):
-    if isinstance(x, list):
-        return list(map(as_proxy, x))
-    elif isinstance(x, tuple):
+    if type(x) is list:
+        for i, v in enumerate(x):
+            x[i] = as_proxy(v)
+        return x
+    elif type(x) is dict:
+        for k, v in x.items():
+            x[as_proxy(k)] = as_proxy(v)
+        return x
+    elif type(x) is set:
+        for v in x:
+            x.remove(v)
+            x.add(as_proxy(v))
+        return x
+    elif type(x) is tuple:
         return tuple(map(as_proxy, x))
-    elif isinstance(x, set):
-        return set(map(as_proxy, x))
-    elif isinstance(x, dict):
-        return dict({as_proxy(k) : as_proxy(v) for k, v in x.items()})
     elif isinstance(x, (types.FunctionType, types.MethodType)):
         return memory_safe_function(x)
     else:
@@ -105,3 +116,7 @@ def to_closure(args):
     exec(source, variables)
 
     return variables['outer']().__closure__
+
+
+class _dict(dict):
+    """Can be weakref"""
