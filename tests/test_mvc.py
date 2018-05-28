@@ -2,7 +2,7 @@ import sys
 from pytest import importorskip
 
 # skips for python 3.6 or less
-from spectate import mvc
+mvc = importorskip('spectate.mvc')
 
 
 def test_mvc_custom_model():
