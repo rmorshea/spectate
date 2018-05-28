@@ -1,9 +1,10 @@
 import sys
 import inspect
+from pytest import raises
 from spectate.spectate import (
     expose, expose_as, watch, watched,
     watcher, unwatch, watchable, Watchable,
-    MethodSpectator, Spectator, Bunch,
+    MethodSpectator, Spectator, Data,
 )
 
 
@@ -111,10 +112,10 @@ def test_method_spectator_argspec():
 
 def check_answer(checklist, inst, name, a, b, c=None, d=None, *e, **f):
     args, kwargs = condense(a, b, c, d, *e, **f)
-    checklist.append(Bunch(
+    checklist.append(Data(
         name=name,
         value=(inst, a, b, c, d, e, f),
-        before=Bunch(
+        before=Data(
             name=name,
             args=args,
             kwargs=kwargs))
@@ -165,7 +166,7 @@ def test_callback_closure():
         callbacks_called[0] += 1
         def closure(value):
             callbacks_called[1] += 1
-            assert (checklist[-1] == Bunch(
+            assert (checklist[-1] == Data(
                 name=call.name, value=value,
                 before=call))
         return closure
@@ -222,3 +223,40 @@ if not sys.version_info < (3, 6):
 
         assert watchable(Child)
         assert isinstance(Child.method, MethodSpectator)
+
+
+def test_data_is_immutable():
+    d = Data(a=0)
+    with raises(TypeError):
+        d['a'] = 1
+    with raises(TypeError):
+        d.a = 1
+    with raises(TypeError):
+        del d['a']
+    with raises(TypeError):
+        del d.a
+    assert d == {'a': 0}
+
+
+def test_none_is_empty_data():
+    d = Data(a=None)
+    assert d == {}
+    assert 'b' not in d
+    assert d['a'] is None
+
+
+def test_data_evolution():
+    d0 = Data(a=0)
+    d1 = d0['b': 1]
+    assert d1 == {'a': 0, 'b': 1}
+    d2 = d1['b': 2, 'c': 3]
+    assert d2 == {'a': 0, 'b': 2, 'c': 3}
+    d3 = d2[{'b': 3, 'c': 4}]
+    d4 = d3['b': None, 'c': None]
+    assert d4 == d0
+    d5 = d4[{'a': None}]
+    assert d5 == {}
+
+def test_data_is_mapping():
+    assert dict(Data(a=0, b=1)) == {'a': 0, 'b': 1}
+    assert dict(**Data(a=0, b=1)) == {'a': 0, 'b': 1}

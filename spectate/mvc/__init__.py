@@ -7,12 +7,15 @@ MVC
 
 .. automodule:: spectate.mvc.models
     :members:
+
+.. automodule:: spectate.mvc.utils
+    :members:
 """
 
 import sys
 
 if sys.version_info < (3, 6):
-    raise RuntimeError('Python 3.6 or greater required.')
+    raise ImportError('Python 3.6 or greater required.')
 else:
     del sys
 

@@ -77,6 +77,10 @@ class List(Model, list):
         for i in range(answer.before, len(self)):
             notify(index=i, old=Undefined, new=self[i])
 
+    @control.after('pop')
+    def _control_pop(self, answer, notify):
+        notify(index=len(self), old=answer.value, new=Undefined)
+
     @control.before('remove')
     def _control_remove(self, call, notify):
         index = self.index(call.args[0])
@@ -104,6 +108,8 @@ class List(Model, list):
 
 class Dict(Model, dict):
     """An MVC enabled ``dict``."""
+
+    _model_selector_template = '{key}'
 
     @control.before('__setitem__', 'setdefault')
     def _control_setitem(self, call, notify):
