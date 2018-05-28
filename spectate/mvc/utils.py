@@ -37,21 +37,18 @@ class completemethod:
 
 
 def memory_safe_function(function):
-    """Return a function which has no outside references.
+    """Return a memory safe copy of a function.
 
-    All the defauts, and closure of this function are turned into proxy objects
-    wherever possible. This creates a "memory safe" function (with the exception
-    of global variables).
+    Through some clever tricks, all the defauts, and closure of this function
+    are turned into proxy objects wherever possible. **Making a function memory
+    safe may require its parent scope to be modified** - if the function contains
+    a ``list``, ``dict``, or ``set`` in its closure or default arguments, all
+    values contained in those data structures will be converted to proxy objects!
 
     Parameters
     ----------
     function: FunctionType, MethodType
-        Only functions are allowed.
-
-    Returns
-    -------
-    ghost: FunctionType
-        A copy of the given function that is "memory safe".
+        The function to be made into a memory safe copy.
     """
     if isinstance(function, types.MethodType):
         self = as_proxy(function.__self__)
@@ -66,7 +63,7 @@ def memory_safe_function(function):
 
     safe = types.FunctionType(
         function.__code__,
-        function.__globals__, # globals are NOT safe.
+        function.__globals__,
         function.__name__,
         defaults,
         closure)
