@@ -6,6 +6,7 @@ Spectate
 
 .. automodule:: spectate.spectate
     :members:
+    :ignore-module-all:
 
 .. automodule:: spectate.mvc
     :members:

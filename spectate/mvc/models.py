@@ -1,7 +1,7 @@
 # See End Of File For Licensing
 
 from .utils import Sentinel
-from .base import Model, control
+from .base import Model, Control
 
 
 __all__ = [
@@ -18,7 +18,17 @@ Undefined = Sentinel('Undefined')
 class List(Model, list):
     """An MVC enabled ``list``."""
 
-    @control.before('__setitem__')
+    _control_setitem = Control('__setitem__')
+    _control_delitem = Control('__delitem__')
+    _control_insert = Control('insert')
+    _control_append = Control('append')
+    _control_extend = Control('extend')
+    _control_pop = Control('pop')
+    _control_remove = Control('remove')
+    _control_sort = Control('sort').before('_control_rearrangement')
+    _control_reverse = Control('reverse').before('_control_rearrangement')
+
+    @_control_setitem.before
     def _control_setitem(self, call, notify):
         index = call.args[0]
         try:
@@ -34,7 +44,7 @@ class List(Model, list):
         if new is not old:
             notify(index=index, old=old, new=new)
 
-    @control.before('__delitem__')
+    @_control_delitem.before
     def _control_delitem(self, call, notify):
         index = call.args[0]
         return index, self[index:]
@@ -49,7 +59,7 @@ class List(Model, list):
                 new = Undefined
             notify(index=(i + index), old=x, new=new)
 
-    @control.before('insert')
+    @_control_insert.before
     def _control_insert(self, call, notify):
         index = call.args[0]
         return index, self[index:]
@@ -64,11 +74,11 @@ class List(Model, list):
                 o = Undefined
             notify(index=i, old=o, new=self[i])
 
-    @control.after('append')
+    @_control_append.after
     def _control_append(self, answer, notify):
         notify(index=len(self) - 1, old=Undefined, new=self[-1])
 
-    @control.before('extend')
+    @_control_extend.before
     def _control_extend(self, call, notify):
         return len(self)
 
@@ -77,32 +87,23 @@ class List(Model, list):
         for i in range(answer.before, len(self)):
             notify(index=i, old=Undefined, new=self[i])
 
-    @control.after('pop')
+    @_control_pop.after
     def _control_pop(self, answer, notify):
         notify(index=len(self), old=answer.value, new=Undefined)
 
-    @control.before('remove')
+    @_control_remove.before
     def _control_remove(self, call, notify):
         index = self.index(call.args[0])
         return index, self[index:]
 
     _control_remove.after(_control_delitem)
 
-    @control.before('reverse')
-    def _before_reverse(self, call, notify):
-        return self._control_rearrangement(self)
-
-    @control.before('sort')
-    def _before_sort(self, call, notify):
-        return self._control_rearrangement(self)
-
-    @staticmethod
-    def _control_rearrangement(new):
-        old = new[:]
+    def _control_rearrangement(self):
+        old = self[:]
         def _after_rearangement(returned, notify):
             for i, v in enumerate(old):
-                if v != new[i]:
-                    notify(index=i, old=v, new=new[i])
+                if v != self[i]:
+                    notify(index=i, old=v, new=self[i])
         return _after_rearangement
 
 
@@ -111,7 +112,12 @@ class Dict(Model, dict):
 
     _model_selector_template = '{key}'
 
-    @control.before('__setitem__', 'setdefault')
+    _control_setitem = Control('__setitem__', 'setdefault')
+    _control_delitem = Control('__delitem__', 'pop')
+    _control_update = Control('update')
+    _control_clear = Control('clear')
+
+    @_control_setitem.before
     def _control_setitem(self, call, notify):
         key = call.args[0]
         old = self.get(key, Undefined)
@@ -124,7 +130,7 @@ class Dict(Model, dict):
         if new != old:
             notify(key=key, old=old, new=new)
 
-    @control.before('__delitem__', 'pop')
+    @_control_delitem.before
     def _control_delitem(self, call, notify):
         key = call.args[0]
         try:
@@ -136,7 +142,7 @@ class Dict(Model, dict):
                 notify(key=key, old=old, new=Undefined)
             return _after
 
-    @control.before('update')
+    @_control_update.before
     def _control_update(self, call, notify):
         if len(call.args):
             args = call.args[0]
@@ -156,7 +162,7 @@ class Dict(Model, dict):
             if self[k] != v:
                 notify(key=k, old=v, new=self[k])
 
-    @control.before('clear')
+    @_control_clear.before
     def _control_clear(self, call, notify):
         return self.copy()
 
@@ -169,9 +175,12 @@ class Dict(Model, dict):
 class Set(Model, set):
     """An MVC enabled ``set``."""
 
-    @control.before(
+    _control_update = Control(
         "clear", "update", "difference_update", "intersection_update",
-        "add", "pop", "remove", "symmetric_difference_update", "discard")
+        "add", "pop", "remove", "symmetric_difference_update", "discard",
+    )
+
+    @_control_update.before
     def _control_update(self, call, notify):
         return self.copy()
 

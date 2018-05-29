@@ -17,6 +17,7 @@ __all__ = [
     'watcher',
     'watchable',
     'Watchable',
+    'Data',
 ]
 
 
@@ -375,7 +376,35 @@ def watcher(value):
 
 
 class Data(collections.Mapping):
-    """An immutable mapping where :obj:`None` represents an empty key."""
+    """An immutable mapping with attribute-access.
+
+    Empty keys are represented with a value of ``None``.
+
+    In order to evolve :class:`Data`, users must create copies that
+    contain updates:
+
+    .. code-block:: python
+
+        d1 = Data(a=1)
+        d2 = Data(b=2)
+        assert Data(d1, **d2) == {'a': 1, 'b': 2}
+
+    Easing this fact, is :class:`Data`'s syntactic sugar:
+
+    .. code-block:: python
+
+        d1 = Data(a=1)
+        assert d1 == {'a': 1}
+
+        d2 = d1['b': 2]
+        assert d2 == {'a': 1, 'b': 2}
+
+        d3 = d2['a': None, 'b': 1]
+        assert d3 == {'b': 1}
+
+        d4 = d3[{'a': 1, 'c': 3}, {'b': None}]
+        assert d4 == {'a': 1, 'c': 3}
+    """
 
     def __init__(self, *args, **kwargs):
         items = dict(*args, **kwargs).items()
@@ -385,15 +414,20 @@ class Data(collections.Mapping):
         return None
 
     def __getitem__(self, key):
-        if isinstance(key, slice):
+        if type(key) is slice:
             key = (key,)
-        if isinstance(key, tuple):
+        if type(key) is tuple:
             for x in key:
                 if not isinstance(x, slice):
                     break
             else:
                 new = {s.start : s.stop for s in key}
                 return type(self)(self, **new)
+            merge = {}
+            for x in key:
+                if isinstance(x, collections.Mapping):
+                    merge.update(x)
+            key = merge
         if isinstance(key, collections.Mapping):
             return type(self)(self, **key)
         return self.__dict__.get(key)

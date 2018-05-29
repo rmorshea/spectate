@@ -11,39 +11,16 @@ class Sentinel:
         return self.__name
 
 
-class completemethod:
-
-    _class_method = None
-    _instance_method = None
-
-    def __init__(self, function):
-        self._class_method = function
-
-    def __call__(self, function):
-        self._instance_method = function
-        return self
-
-    def __set_name__(self, cls, name):
-        if self._class_method is None:
-            raise TypeError('No class method defined.')
-        elif self._instance_method is None:
-            raise TypeError('No instance method defined.')
-
-    def __get__(self, obj, cls):
-        if obj is None:
-            return types.MethodType(self._class_method, cls)
-        else:
-            return types.MethodType(self._instance_method, obj)
-
-
 def memory_safe_function(function):
     """Return a memory safe copy of a function.
 
     Through some clever tricks, all the defauts, and closure of this function
     are turned into proxy objects wherever possible. **Making a function memory
-    safe may require its parent scope to be modified** - if the function contains
+    safe requires its parent scope to be modified** - if the function contains
     a ``list``, ``dict``, or ``set`` in its closure or default arguments, all
     values contained in those data structures will be converted to proxy objects!
+    Thus the user must keep references to those objects alive outside those data
+    structures.
 
     Parameters
     ----------
