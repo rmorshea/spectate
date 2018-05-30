@@ -256,6 +256,8 @@ def test_data_evolution():
     assert d4 == d0
     d5 = d4[{'a': None}]
     assert d5 == {}
+    d6 = d5[{'a': 1}, {'b': 2}]
+    assert d6 == {'a': 1, 'b': 2}
 
 def test_data_is_mapping():
     assert dict(Data(a=0, b=1)) == {'a': 0, 'b': 1}

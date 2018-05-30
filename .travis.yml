@@ -4,16 +4,14 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
-  - "3.5-dev" # 3.5 development branch
-  - "nightly" # currently points to 3.6-dev
-# command to install dependencies
+  - "3.6"
+  - "nightly"
 install:
-  - pip install .
-  - pip install -r requirements.txt
-# command to run tests
+  # command to install dependencies
+  - pip install . -r requirements.txt
 script:
-  - py.test .
-
+  # command to run tests
+  - python -m pytest --cov --doctest-ignore-import-error
 notifications:
   email:
     on_success: change

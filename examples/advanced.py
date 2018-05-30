@@ -2,7 +2,7 @@ from spectate import expose, watch
 
 
 @expose('__setattr__', '__delattr__')
-class Data:
+class Data(object):
 
     def __init__(self):
         self._callbacks = []

@@ -12,12 +12,15 @@ class Counter(mvc.Model):
     def decrement(self, amount):
         self.x -= amount
 
-    # define a beforeback for increment and decrement
-    @mvc.control.before('increment', 'decrement')
+    # define a control for incrementing and decrementing
+    _control_change = mvc.Control('increment', 'decrement')
+
+    # register a beforeback to the control
+    @_control_change.before
     def _control_change(self, call, notify):
         return self.x
 
-    # create the corresponding afterback
+    # register an afterback to the control
     @_control_change.after
     def _control_change(self, answer, notify):
         # Send an "event" dictionary to the Counter's views.

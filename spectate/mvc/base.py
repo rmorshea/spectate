@@ -4,13 +4,12 @@ from contextlib import contextmanager
 from functools import wraps
 from collections import defaultdict
 
-from .utils import completemethod, memory_safe_function
+from .utils import memory_safe_function
 from ..spectate import Watchable, Data, MethodSpectator, expose, watched
 
 __all__ = [
     'Model',
-    'is_model',
-    'control',
+    'Control',
     'view',
     'unview',
     'hold',
@@ -18,13 +17,9 @@ __all__ = [
 ]
 
 
-def is_model(x):
-    return isinstance(x, Model)
-
-
 @contextmanager
 def hold(model):
-    if not is_model(model):
+    if not isinstance(model, Model):
         raise TypeError('Expected a Model, not %r.' % model)
     events = []
     redirect = lambda e : events.append(e)
@@ -44,7 +39,7 @@ def hold(model):
 
 @contextmanager
 def mute(model):
-    if not is_model(model):
+    if not isinstance(model, Model):
         raise TypeError('Expected a Model, not %r.' % model)
     redirect = lambda e : None
     restore = model.__dict__.get('_notify_model_views')
@@ -59,7 +54,7 @@ def mute(model):
 
 
 def views(model):
-    if not is_model(model):
+    if not isinstance(model, Model):
         raise TypeError('%r is not a Model.' % model)
     return {s : l[:] for s, l in model._model_views.items()}
 
@@ -69,7 +64,7 @@ def view(*models, **select):
         # we want to avoid circular references.
         safe = memory_safe_function(function)
         for model in models:
-            if not is_model(model):
+            if not isinstance(model, Model):
                 raise TypeError('%r is not a Model.' % model)
             if not select:
                 model._model_views[None].append(safe)
@@ -83,7 +78,7 @@ def view(*models, **select):
 def unview(*models, **select):
     def setup(function):
         for model in models:
-            if not is_model(model):
+            if not isinstance(model, Model):
                 raise TypeError('%r is not a Model.' % model)
             if select:
                 selector = model._model_event_selector.format(**select)
@@ -92,13 +87,27 @@ def unview(*models, **select):
             model._model_views[selector].remove(function)
 
 
-class control:
+class Control:
 
-    @staticmethod
-    def _before(self, call, notify):
-        return call
+    def __init__(self, *methods):
+        self.methods = methods
+        self.name = None
 
-    _after = None
+    def before(self, callback):
+        if isinstance(callback, Control):
+            callback = callback._before
+        elif not isinstance(callback, str):
+            callback = self._wrap(callback)
+        self._before = callback
+        return self
+
+    def after(self, callback):
+        if isinstance(callback, Control):
+            callback = callback._after
+        elif not isinstance(callback, str):
+            callback = self._wrap(callback)
+        self._after = callback
+        return self
 
     @staticmethod
     def _wrap(function):
@@ -112,43 +121,20 @@ class control:
             return function(self, *(args + (notify,)), **kwargs)
         return callback
 
-    @completemethod
-    def before(cls, *methods):
-        new = super().__new__
-        def setup(callback):
-            self = new(cls)
-            self.methods = methods
-            self._before = callback
-            return self
-        return setup
-
-    @before
-    def before(self, callback):
-        if isinstance(callback, control):
-            callback = callback._before
-        self._before = callback
-        return self
-
-    @completemethod
-    def after(cls, *methods):
-        new = super().__new__
-        def setup(callback):
-            self = new(cls)
-            self.methods = methods
-            self._after = callback
-            return self
-        return setup
-
-    @after
-    def after(self, callback):
-        if isinstance(callback, control):
-            callback = callback._after
-        self._after = callback
-        return self
+    _after, _before = None, None
 
     def __set_name__(self, cls, name):
         if not issubclass(cls, Model):
             raise TypeError("Can only define a control on a Model, not %r" % cls)
+        if self.name:
+            msg = 'Control was defined twice - %r and %r.'
+            raise RuntimeError(msg % (self.name, name))
+        else:
+            self.name = name
+        if isinstance(self._after, str):
+            self._after = self._wrap(getattr(cls, self._after))
+        if isinstance(self._before, str):
+            self._before = self._wrap(getattr(cls, self._before))
         for m in self.methods:
             setattr(cls, m, MethodSpectator(getattr(cls, m), m))
 
@@ -160,7 +146,7 @@ class Model(Watchable):
 
     def __init_subclass__(cls, **kwargs):
         for k, v in list(cls.__dict__.items()):
-            if isinstance(v, control):
+            if isinstance(v, Control):
                 cls._model_controls += (k,)
         super().__init_subclass__(**kwargs)
 
@@ -169,8 +155,7 @@ class Model(Watchable):
         for name in cls._model_controls:
             ctrl = getattr(cls, name)
             for method in ctrl.methods:
-                before = ctrl._wrap(ctrl._before)
-                after= ctrl._wrap(ctrl._after)
+                before, after = ctrl._before, ctrl._after
                 spectator.callback(method, before, after)
         self._model_views = defaultdict(list)
         self.__init__(*args, **kwargs)

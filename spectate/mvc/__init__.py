@@ -4,9 +4,11 @@ MVC
 
 .. automodule:: spectate.mvc.base
     :members:
+    :ignore-module-all:
 
 .. automodule:: spectate.mvc.models
     :members:
+    :ignore-module-all:
 
 .. automodule:: spectate.mvc.utils
     :members:
