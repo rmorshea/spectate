@@ -53,6 +53,7 @@ if __name__ == '__main__':
         packages=packages,
         description="Create classes whose instances have tracked methods",
         long_description=long_description,
+        long_description_content_type='text/markdown',
         author="Ryan Morshead",
         author_email="ryan.morshead@gmail.com",
         url="https://github.com/rmorshea/spectate",

@@ -42,7 +42,7 @@ def hold(model):
             del model._notify_model_views
         else:
             model._notify_model_views = restore
-        model._notify_model_views(events)
+        model._notify_model_views(tuple(events))
 
 
 @contextmanager
@@ -114,7 +114,7 @@ class Control:
             args = args + (notify,)
             result = function(self, *args, **kwargs)
             if events:
-                self._notify_model_views(events)
+                self._notify_model_views(tuple(events))
             return result
         return callback
 
