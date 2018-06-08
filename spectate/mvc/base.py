@@ -1,10 +1,10 @@
 # See End Of File For Licensing
 
 from contextlib import contextmanager
-from functools import wraps
+from functools import wraps, partial
 from collections import defaultdict
 
-from .utils import memory_safe_function
+from .utils import memory_safe_function, Sentinel
 from ..spectate import Watchable, Data, MethodSpectator, expose, watched
 
 __all__ = [
@@ -12,17 +12,26 @@ __all__ = [
     'Control',
     'view',
     'unview',
+    'is_model',
     'hold',
     'mute',
 ]
 
 
+def is_model(model, raises=False):
+    if isinstance(model, Model):
+        return True
+    elif raises:
+        raise TypeError('Expected a Model, not %r.' % model)
+    else:
+        return False
+
+
 @contextmanager
 def hold(model):
-    if not isinstance(model, Model):
-        raise TypeError('Expected a Model, not %r.' % model)
+    is_model(model, raises=True)
     events = []
-    redirect = lambda e : events.append(e)
+    redirect = lambda e : events.extend(e)
     restore = model.__dict__.get('_notify_model_views')
     model._notify_model_views = redirect
 
@@ -33,14 +42,12 @@ def hold(model):
             del model._notify_model_views
         else:
             model._notify_model_views = restore
-        for e in events:
-            model._notify_model_views(e)
+        model._notify_model_views(events)
 
 
 @contextmanager
 def mute(model):
-    if not isinstance(model, Model):
-        raise TypeError('Expected a Model, not %r.' % model)
+    is_model(model, raises=True)
     redirect = lambda e : None
     restore = model.__dict__.get('_notify_model_views')
     model._notify_model_views = redirect
@@ -54,37 +61,23 @@ def mute(model):
 
 
 def views(model):
-    if not isinstance(model, Model):
-        raise TypeError('%r is not a Model.' % model)
-    return {s : l[:] for s, l in model._model_views.items()}
+    """Return a model's views keyed on what events they respond to."""
+    is_model(model, raises=True)
+    return model._model_views[:]
 
 
-def view(*models, **select):
+def view(model):
+    is_model(model, raises=True)
     def setup(function):
         # we want to avoid circular references.
         safe = memory_safe_function(function)
-        for model in models:
-            if not isinstance(model, Model):
-                raise TypeError('%r is not a Model.' % model)
-            if not select:
-                model._model_views[None].append(safe)
-            else:
-                selector = model._model_event_selector.format(**select)
-                model._model_views[selector].append(safe)
+        model._model_views.append(safe)
         return safe
     return setup
 
 
-def unview(*models, **select):
-    def setup(function):
-        for model in models:
-            if not isinstance(model, Model):
-                raise TypeError('%r is not a Model.' % model)
-            if select:
-                selector = model._model_event_selector.format(**select)
-            else:
-                selector = None
-            model._model_views[selector].remove(function)
+def unview(model, function):
+    model._model_views.remove(function)
 
 
 class Control:
@@ -115,10 +108,14 @@ class Control:
             return None
         @wraps(function)
         def callback(self, *args, **kwargs):
-            def notify(*args, **kwargs):
-                event = Data(*args, **kwargs)
-                self._notify_model_views(event)
-            return function(self, *(args + (notify,)), **kwargs)
+            events = []
+            def notify(**event):
+                events.append(event)
+            args = args + (notify,)
+            result = function(self, *args, **kwargs)
+            if events:
+                self._notify_model_views(events)
+            return result
         return callback
 
     _after, _before = None, None
@@ -142,7 +139,6 @@ class Control:
 class Model(Watchable):
 
     _model_controls = ()
-    _model_event_selector = ''
 
     def __init_subclass__(cls, **kwargs):
         for k, v in list(cls.__dict__.items()):
@@ -157,17 +153,16 @@ class Model(Watchable):
             for method in ctrl.methods:
                 before, after = ctrl._before, ctrl._after
                 spectator.callback(method, before, after)
-        self._model_views = defaultdict(list)
+        self._model_views = []
         self.__init__(*args, **kwargs)
         return self
 
-    def _notify_model_views(self, event):
-        selector = self._model_event_selector.format(**event)
-        for view in self._model_views[selector]:
-            view(event)
-        for view in self._model_views[None]:
-            view(event)
+    def _notify_model_views(self, events):
+        for view in self._model_views:
+            view(events)
 
+
+_Empty = Sentinel('Empty')
 
 # The MIT License (MIT)
 

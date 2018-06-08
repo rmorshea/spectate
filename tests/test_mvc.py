@@ -12,7 +12,7 @@ def model_events(mtype, *args, **kwargs):
 
     @mvc.view(model)
     def cache(e):
-        events.append(e)
+        events.extend(e)
 
     return model, events
 

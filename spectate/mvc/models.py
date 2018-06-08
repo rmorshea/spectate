@@ -8,6 +8,7 @@ __all__ = [
     'List',
     'Dict',
     'Set',
+    'Object',
     'Undefined',
 ]
 
@@ -24,6 +25,7 @@ class List(Model, list):
     _control_append = Control('append')
     _control_extend = Control('extend')
     _control_pop = Control('pop')
+    _control_clear = Control('clear')
     _control_remove = Control('remove')
     _control_sort = Control('sort').before('_control_rearrangement')
     _control_reverse = Control('reverse').before('_control_rearrangement')
@@ -90,6 +92,15 @@ class List(Model, list):
     @_control_pop.after
     def _control_pop(self, answer, notify):
         notify(index=len(self), old=answer.value, new=Undefined)
+
+    @_control_clear.before
+    def _control_clear(self, call, notify):
+        return self.copy()
+
+    @_control_clear.after
+    def _control_clear(self, answer, notify):
+        for i, v in enumerate(reversed(answer.before)):
+            notify(index=i, old=v, new=Undefined)
 
     @_control_remove.before
     def _control_remove(self, call, notify):
@@ -190,6 +201,22 @@ class Set(Model, set):
         old = answer.before.difference(self)
         if new or old:
             notify(new=new, old=old)
+
+
+class Object(Model):
+
+    _control_attr_change = Control('__setattr__', '__delattr__')
+
+    @_control_attr_change.before
+    def _control_attr_change(self, call, notify):
+        return call.args[0], getattr(self, call.args[0], Undefined)
+
+    @_control_attr_change.after
+    def _control_attr_change(self, answer, notify):
+        attr, old = answer.before
+        new = getattr(self, attr, Undefined)
+        if new != old:
+            notify(attr=attr, old=old, new=new)
 
 
 # The MIT License (MIT)
