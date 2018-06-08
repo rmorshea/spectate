@@ -110,7 +110,7 @@ class Control:
         def callback(self, *args, **kwargs):
             events = []
             def notify(**event):
-                events.append(event)
+                events.append(Data(event))
             args = args + (notify,)
             result = function(self, *args, **kwargs)
             if events:
