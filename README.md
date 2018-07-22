@@ -125,7 +125,7 @@ is accessed through an instance, the descriptor will return a wrapper that will 
 
 # The Bleeding Edge
 
-The following user facing features are only available on `master`, **untested** and subject to frequent **breaking** changes!
+The following user facing features are **untested** and subject to frequent **breaking** changes!
 
 
 ## An MVC Framework
