@@ -1,5 +1,8 @@
 # See End Of File For Licensing
 
+import inspect
+import itertools
+
 from .utils import Sentinel
 from .base import Model, Control
 
@@ -157,10 +160,10 @@ class Dict(Model, dict):
     def _control_update(self, call, notify):
         if len(call.args):
             args = call.args[0]
-            if inspect.isgenerator(arg):
+            if inspect.isgenerator(args):
                 # copy generator so it doesn't get exhausted
-                arg = itertools.tee(arg)[1]
-            new = dict(arg)
+                args = itertools.tee(arsg)[1]
+            new = dict(args)
             new.update(call.kwargs)
         else:
             new = call.kwargs
