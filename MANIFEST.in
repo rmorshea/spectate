@@ -1,9 +1,7 @@
+include LICENSE
 include README.md
 include .travis.yml
 include requirements.txt
-
-# Examples
-graft examples
 
 # Patterns to exclude from any directory
 global-exclude *~
