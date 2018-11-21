@@ -7,6 +7,11 @@ from spectate.spectate import (
     MethodSpectator, Spectator, Data,
 )
 
+try:
+    from inspect import signature
+except ImportError:
+    from funcsigs import signature
+
 
 def test_watchable():
     assert watchable(Watchable)
@@ -107,7 +112,7 @@ def test_method_spectator_signature():
     thing, sectator = watched(WatchableThing)
     assert MethodSpectator._compile_count == 2
     assert (
-        inspect.signature(Thing().func) == inspect.signature(thing.func)
+        signature(Thing().func) == signature(thing.func)
     )
 
 
