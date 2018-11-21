@@ -66,8 +66,6 @@ def as_proxy(x):
         return x
     elif type(x) is tuple:
         return tuple(map(as_proxy, x))
-    elif isinstance(x, (types.FunctionType, types.MethodType)):
-        return memory_safe_function(x)
     else:
         try:
             return proxy(x)

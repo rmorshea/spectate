@@ -2,6 +2,8 @@
 
 import inspect
 import itertools
+from weakref import ref
+from types import MethodType
 
 from .utils import Sentinel
 from .base import Model, Control
@@ -220,6 +222,62 @@ class Object(Model):
         new = getattr(self, attr, Undefined)
         if new != old:
             notify(attr=attr, old=old, new=new)
+
+
+class Oracle(Object):
+
+    def __init__(self):
+
+        def try_to_view(path, x):
+            if isinstance(x, Dict):
+                view(x)(MethodType(notify_dict_change, path))
+            elif isinstance(x, List):
+                view(x)(MethodType(notify_list_change, path))
+            elif isinstance(x, Object):
+                view(x)(MethodType(notify_object_change, path))
+            elif isinstance(x, Set):
+                view(x)(MethodType(notify_set_change, path))
+            else:
+                try:
+                    hash(x)
+                except TypeError:
+                    name = type(self).__name__
+                    msg = "%r cannot assign a mutable value which is not a 'Model' type"
+                    raise TypeError(msg % (name, ))
+
+        def notify_object_change(path, events, oracle=ref(self)):
+            new_events = []
+            for e in events:
+                try_to_view(path + (e["attr"],), e["new"])
+                new_events.append(e["location": path])
+            oracle()._notify_oracle_views(new_events)
+
+        def notify_dict_change(path, events, oracle=ref(self)):
+            new_events = []
+            for e in events:
+                try_to_view(path + (e["key"],), e["new"])
+                new_events.append(e["location": path])
+            oracle()._notify_oracle_views(new_events)
+
+        def notify_list_change(path, events, oracle=ref(self)):
+            new_events = []
+            for e in events:
+                try_to_view(path + (e["index"],), e["new"])
+                new_events.append(e["location": path])
+            oracle()._notify_oracle_views(new_events)
+
+        def notify_set_change(path, events):
+            oracle()._notify_oracle_event([e["location": path] for e in events])
+
+        object.__setattr__(self, "_notify_root_view", notify_object_change)
+
+    def _notify_oracle_views(self, events):
+        events = tuple(events)
+        for view in self._model_views:
+            view(events)
+
+    def _notify_model_views(self, events):
+        self._notify_root_view((), events)
 
 
 # The MIT License (MIT)
