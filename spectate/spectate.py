@@ -1,12 +1,16 @@
 # See End Of File For Licensing
 
-
 import re
 import sys
 import six
 import types
 import inspect
 import collections
+
+try:
+    from inspect import signature, Parameter, Signature
+except ImportError:
+    from funcsigs import signature, Parameter, Signature
 
 __all__ = [
     'expose',
@@ -21,12 +25,33 @@ __all__ = [
 ]
 
 
-def getargspec(func):
-    if isinstance(func, types.FunctionType) or isinstance(func, types.MethodType):
-        return inspect.getargspec(func)
-    else:
-        # no signature introspection is available for this type
-        return inspect.ArgSpec(None, 'args', 'kwargs', None)
+def _safe_signature(func):
+    try:
+        return signature(func)
+    except ValueError:
+        # builtin methods don't have sigantures
+        return Signature([
+            Parameter("args", Parameter.VAR_POSITIONAL),
+            Parameter("kwargs", Parameter.VAR_KEYWORD),
+        ])
+
+
+def _signature_breakdown(func):
+    args = []
+    defaults = []
+    var_keyword = None
+    var_positional = None
+    sig = _safe_signature(func)
+    for param in sig.parameters.values():
+        if param.kind == Parameter.VAR_POSITIONAL:
+            var_positional = param.name
+        elif param.kind == Parameter.VAR_KEYWORD:
+            var_keyword = param.name
+        else:
+            if param.default is not Parameter.empty:
+                defaults.append(param.default)
+            args.append(param.name)
+    return str(sig), tuple(args), defaults, var_positional, var_keyword
 
 
 class Spectator(object):
@@ -173,7 +198,7 @@ class MethodSpectator(object):
 
     _compile_count = 0
     _src_str = """def {name}({signature}):
-    args, vargs, kwargs = {args}, {varargs}, {keywords};
+    args, vargs, kwargs = {arguments}, {variable_positional}, {variable_keyword};
     return globals()["spectator"].wrapper('{name}', (args + vargs), kwargs)"""
 
     def __init__(self, basemethod, name=None):
@@ -181,31 +206,23 @@ class MethodSpectator(object):
             raise TypeError('Expected a callable, not %r' % basemethod)
         self.basemethod = basemethod
         self.name = name or basemethod.__name__
-        aspec = getargspec(self.basemethod)
-        self.defaults = aspec.defaults
-        self.code, self.defaults = self._code(aspec)
+        self.code, self.defaults = self._code(basemethod)
 
-    def _code(self, aspec):
-        args = str(aspec.args or ())[1:-1].replace("'", "")
-        signature = args + (", " if aspec.args else "")
-        if args:
-            args = args.join(("(", ",)"))
-        if aspec.varargs is not None:
-            signature += '*' + aspec.varargs + ', '
-        if aspec.keywords is not None:
-            signature += '**' + aspec.keywords
-        if signature.endswith(', '):
-            signature = signature[:-2]
-
-        src = self._src_str.format(name=self.name,
-            signature=signature, args=args or (),
-            varargs=aspec.varargs or (),
-            keywords=aspec.keywords or {})
+    def _code(self, basemethod):
+        sig, args, defaults, varargs, varkwargs = _signature_breakdown(basemethod)
+        src = self._src_str.format(
+            name=self.name,
+            # signature can end with ", /" for positional only params
+            signature=str(sig)[1:-1].replace(", /", ""),
+            arguments=str(tuple(args)).replace("'", ""),
+            variable_positional=varargs or (),
+            variable_keyword=varkwargs or {},
+        )
         name = re.findall('[A-Z][a-z]*', type(self).__name__)
         filename = "-".join(name).upper() + "-#%s"
         code = compile(src, filename % self._compile_count, 'single')
         type(self)._compile_count += 1
-        return code, aspec.defaults
+        return code, tuple(defaults)
 
     def new_wrapper(self, inst, spectator):
         evaldict = {"spectator": spectator}
