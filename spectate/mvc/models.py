@@ -6,7 +6,7 @@ from weakref import ref
 from types import MethodType
 
 from .utils import Sentinel
-from .base import Model, Control
+from .base import Model, Control, view
 
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     'Dict',
     'Set',
     'Object',
+    'Oracle',
     'Undefined',
 ]
 
@@ -226,24 +227,32 @@ class Object(Model):
 
 class Oracle(Object):
 
-    def __init__(self):
+    def __init__(self, **attrs):
 
         def try_to_view(path, x):
             if isinstance(x, Dict):
                 view(x)(MethodType(notify_dict_change, path))
+                for k, v in x.items():
+                    try_to_view(path + (k,), v)
             elif isinstance(x, List):
                 view(x)(MethodType(notify_list_change, path))
+                for i, v in enumerate(x):
+                    try_to_view(path + (i,), v)
             elif isinstance(x, Object):
                 view(x)(MethodType(notify_object_change, path))
+                for k, v in x.__dict__.items():
+                    try_to_view(path + (k,), v)
             elif isinstance(x, Set):
                 view(x)(MethodType(notify_set_change, path))
+                for v in x:
+                    try_to_view(path, v)
             else:
                 try:
                     hash(x)
                 except TypeError:
                     name = type(self).__name__
-                    msg = "%r cannot assign a mutable value which is not a 'Model' type"
-                    raise TypeError(msg % (name, ))
+                    msg = "%r cannot assign the mutable value %r which is not a 'Model' type"
+                    raise TypeError(msg % (name, x))
 
         def notify_object_change(path, events, oracle=ref(self)):
             new_events = []
@@ -270,6 +279,9 @@ class Oracle(Object):
             oracle()._notify_oracle_event([e["location": path] for e in events])
 
         object.__setattr__(self, "_notify_root_view", notify_object_change)
+        for k, v in attrs.items():
+            try_to_view((k,), v)
+        self.__dict__.update(attrs)
 
     def _notify_oracle_views(self, events):
         events = tuple(events)
