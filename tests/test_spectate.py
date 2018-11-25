@@ -7,6 +7,11 @@ from spectate.spectate import (
     MethodSpectator, Spectator, Data,
 )
 
+try:
+    from inspect import signature
+except ImportError:
+    from funcsigs import signature
+
 
 def test_watchable():
     assert watchable(Watchable)
@@ -102,12 +107,13 @@ def test_method_spectator():
     assert wl == [1, 2]
 
 
-def test_method_spectator_argspec():
+def test_method_spectator_signature():
     WatchableThing = expose_as("WatchableThing", Thing, 'func')
     thing, sectator = watched(WatchableThing)
     assert MethodSpectator._compile_count == 2
-    assert (inspect.getargspec(Thing().func) ==
-        inspect.getargspec(thing.func))
+    assert (
+        signature(Thing().func) == signature(thing.func)
+    )
 
 
 def check_answer(checklist, inst, name, a, b, c=None, d=None, *e, **f):
