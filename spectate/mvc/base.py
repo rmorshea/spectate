@@ -153,8 +153,7 @@ class Model(Watchable):
             for method in ctrl.methods:
                 before, after = ctrl._before, ctrl._after
                 spectator.callback(method, before, after)
-        self._model_views = []
-        self.__init__(*args, **kwargs)
+        object.__setattr__(self, "_model_views", [])
         return self
 
     def _notify_model_views(self, events):

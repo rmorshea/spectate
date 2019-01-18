@@ -1,6 +1,4 @@
 """
-.. currentmodule:: spectate
-
 Spectate
 ========
 
