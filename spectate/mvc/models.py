@@ -156,8 +156,8 @@ class Dict(Model, dict):
 
     _control_update = (
         Control("update")
-        .before("_control_before_delitem")
-        .after("_control_after_delitem")
+        .before("_control_before_update")
+        .after("_control_after_update")
     )
 
     _control_clear = (
@@ -205,6 +205,7 @@ class Dict(Model, dict):
     def _control_after_update(self, answer, notify):
         for k, v in answer.before.items():
             if self[k] != v:
+                print(k, v)
                 notify(key=k, old=v, new=self[k])
 
     def _control_before_clear(self, call, notify):

@@ -408,7 +408,7 @@ class Data(collections.Mapping):
 
     def __init__(self, *args, **kwargs):
         items = dict(*args, **kwargs).items()
-        self.__dict__.update(i for i in items if i[1] is not None)
+        self.__dict__.update(i for i in items)
 
     def __getattr__(self, key):
         return None

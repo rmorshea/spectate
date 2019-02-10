@@ -239,13 +239,6 @@ def test_data_is_immutable():
     assert d == {"a": 0}
 
 
-def test_none_is_empty_data():
-    d = Data(a=None)
-    assert d == {}
-    assert "b" not in d
-    assert d["a"] is None
-
-
 def test_data_evolution():
     d0 = Data(a=0)
     d1 = d0["b":1]
@@ -253,12 +246,10 @@ def test_data_evolution():
     d2 = d1["b":2, "c":3]
     assert d2 == {"a": 0, "b": 2, "c": 3}
     d3 = d2[{"b": 3, "c": 4}]
-    d4 = d3["b":None, "c":None]
-    assert d4 == d0
-    d5 = d4[{"a": None}]
-    assert d5 == {}
-    d6 = d5[{"a": 1}, {"b": 2}]
-    assert d6 == {"a": 1, "b": 2}
+
+    d0 = Data()
+    d1 = d0[{"a": 1}, {"b": 2}]
+    assert d1 == {"a": 1, "b": 2}
 
 
 def test_data_is_mapping():

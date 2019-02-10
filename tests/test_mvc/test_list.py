@@ -6,7 +6,7 @@ from spectate.mvc import Undefined as undef
 from .mock import model_events, events_to_comparable_list
 
 
-_list_method_call_and_expected_event = [
+_method_call_and_expected_event = [
     {
         "value": [1, 2, 3],
         "method": "__setitem__",
@@ -84,6 +84,13 @@ _list_method_call_and_expected_event = [
         ]
     },
     {
+        "value": [],
+        "method": "clear",
+        "args": [],
+        "kwargs": {},
+        "events": []
+    },
+    {
         "value": [1, 2, 3],
         "method": "remove",
         "args": [1],
@@ -117,8 +124,8 @@ _list_method_call_and_expected_event = [
 ]
 
 
-@pytest.mark.parametrize("expectation", _list_method_call_and_expected_event)
-def test_basic_list_events(expectation):
+@pytest.mark.parametrize("expectation", _method_call_and_expected_event)
+def test_basic_events(expectation):
     value, actual_events = model_events(mvc.List, expectation["value"])
     method = getattr(value, expectation["method"])
     args = expectation.get("args", [])
