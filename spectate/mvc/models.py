@@ -16,19 +16,52 @@ Undefined = Sentinel("Undefined")
 class List(Model, list):
     """A :mod:`spectate.mvc` enabled ``list``."""
 
-    _control_setitem = Control("__setitem__")
-    _control_delitem = Control("__delitem__")
-    _control_insert = Control("insert")
-    _control_append = Control("append")
-    _control_extend = Control("extend")
-    _control_pop = Control("pop")
-    _control_clear = Control("clear")
-    _control_remove = Control("remove")
-    _control_sort = Control("sort").before("_control_rearrangement")
-    _control_reverse = Control("reverse").before("_control_rearrangement")
+    _control_setitem = (
+        Control("__setitem__")
+        .before("_control_before_setitem")
+        .after("_control_after_setitem")
+    )
+    _control_delitem = (
+        Control("__delitem__")
+        .before("_control_before_delitem")
+        .after("_control_after_delitem")
+    )
+    _control_insert = (
+        Control("insert")
+        .before("_control_before_insert")
+        .after("_control_after_insert")
+    )
+    _control_append = (
+        Control("append")
+        .after("_control_after_append")
+    )
+    _control_extend = (
+        Control("extend")
+        .before("_control_before_extend")
+        .after("_control_after_extend")
+    )
+    _control_pop = (
+        Control("pop")
+        .before("_control_before_pop")
+        .after("_control_after_delitem")
+    )
+    _control_clear = (
+        Control("clear")
+        .before("_control_before_clear")
+        .after("_control_after_clear")
+    )
+    _control_remove = (
+        Control("remove")
+        .before("_control_before_remove")
+        .after("_control_after_delitem")
+    )
+    _control_rearrangement = (
+        Control("sort", "reverse")
+        .before("_control_before_rearrangement")
+        .after("_control_after_rearrangement")
+    )
 
-    @_control_setitem.before
-    def _control_setitem(self, call, notify):
+    def _control_before_setitem(self, call, notify):
         index = call.args[0]
         try:
             old = self[index]
@@ -36,20 +69,17 @@ class List(Model, list):
             old = Undefined
         return index, old
 
-    @_control_setitem.after
-    def _control_setitem(self, answer, notify):
+    def _control_after_setitem(self, answer, notify):
         index, old = answer.before
         new = self[index]
         if new is not old:
             notify(index=index, old=old, new=new)
 
-    @_control_delitem.before
-    def _control_delitem(self, call, notify):
+    def _control_before_delitem(self, call, notify):
         index = call.args[0]
         return index, self[index:]
 
-    @_control_delitem.after
-    def _control_delitem(self, answer, notify):
+    def _control_after_delitem(self, answer, notify):
         index, old = answer.before
         for i, x in enumerate(old):
             try:
@@ -58,13 +88,11 @@ class List(Model, list):
                 new = Undefined
             notify(index=(i + index), old=x, new=new)
 
-    @_control_insert.before
-    def _control_insert(self, call, notify):
+    def _control_before_insert(self, call, notify):
         index = call.args[0]
         return index, self[index:]
 
-    @_control_insert.after
-    def _control_insert(self, answer, notify):
+    def _control_after_insert(self, answer, notify):
         index, old = answer.before
         for i in range(index, len(self)):
             try:
@@ -73,48 +101,42 @@ class List(Model, list):
                 o = Undefined
             notify(index=i, old=o, new=self[i])
 
-    @_control_append.after
-    def _control_append(self, answer, notify):
+    def _control_after_append(self, answer, notify):
         notify(index=len(self) - 1, old=Undefined, new=self[-1])
 
-    @_control_extend.before
-    def _control_extend(self, call, notify):
+    def _control_before_extend(self, call, notify):
         return len(self)
 
-    @_control_extend.after
-    def _control_extend(self, answer, notify):
+    def _control_after_extend(self, answer, notify):
         for i in range(answer.before, len(self)):
             notify(index=i, old=Undefined, new=self[i])
 
-    @_control_pop.after
-    def _control_pop(self, answer, notify):
-        notify(index=len(self), old=answer.value, new=Undefined)
+    def _control_before_pop(self, call, notify):
+        if not call.args:
+            index = len(self) - 1
+        else:
+            index = call.args[0]
+        return index, self[index:]
 
-    @_control_clear.before
-    def _control_clear(self, call, notify):
+    def _control_before_clear(self, call, notify):
         return self.copy()
 
-    @_control_clear.after
-    def _control_clear(self, answer, notify):
-        for i, v in enumerate(reversed(answer.before)):
+    def _control_after_clear(self, answer, notify):
+        for i, v in enumerate(answer.before):
             notify(index=i, old=v, new=Undefined)
 
-    @_control_remove.before
-    def _control_remove(self, call, notify):
+    def _control_before_remove(self, call, notify):
         index = self.index(call.args[0])
         return index, self[index:]
 
-    _control_remove.after(_control_delitem)
+    def _control_before_rearrangement(self, call, notify):
+        return self.copy()
 
-    def _control_rearrangement(self):
-        old = self[:]
-
-        def _after_rearangement(returned, notify):
-            for i, v in enumerate(old):
-                if v != self[i]:
-                    notify(index=i, old=v, new=self[i])
-
-        return _after_rearangement
+    def _control_after_rearrangement(self, answer, notify):
+        old = answer.before
+        for i, v in enumerate(old):
+            if v != self[i]:
+                notify(index=i, old=v, new=self[i])
 
 
 class Dict(Model, dict):

@@ -188,6 +188,8 @@ class BoundControl:
 
     @property
     def before(self):
+        if self._before is None:
+            return None
         if hasattr(self._after, "__get__"):
             before = self._before.__get__(self._obj, self._cls)
         else:
@@ -215,6 +217,8 @@ class BoundControl:
 
     @property
     def after(self):
+        if self._after is None:
+            return self._after
         if hasattr(self._after, "__get__"):
             after = self._after.__get__(self._obj, self._cls)
         else:
