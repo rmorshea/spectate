@@ -209,8 +209,9 @@ counter = Counter()
 
 
 @mvc.view(counter)
-def printer(event):
-    print(event)
+def printer(events):
+    for e in events:
+        print(e)
 
 
 counter.increment(1)

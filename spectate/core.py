@@ -2,10 +2,10 @@
 
 import re
 import sys
-import six
 import types
 import inspect
 import collections
+from functools import wraps
 
 try:
     from inspect import signature, Parameter, Signature
@@ -13,15 +13,15 @@ except ImportError:
     from funcsigs import signature, Parameter, Signature
 
 __all__ = [
-    'expose',
-    'expose_as',
-    'watch',
-    'watched',
-    'unwatch',
-    'watcher',
-    'watchable',
-    'Watchable',
-    'Data',
+    "expose",
+    "expose_as",
+    "watch",
+    "watched",
+    "unwatch",
+    "watcher",
+    "watchable",
+    "Watchable",
+    "Data",
 ]
 
 
@@ -30,10 +30,12 @@ def _safe_signature(func):
         return signature(func)
     except ValueError:
         # builtin methods don't have sigantures
-        return Signature([
-            Parameter("args", Parameter.VAR_POSITIONAL),
-            Parameter("kwargs", Parameter.VAR_KEYWORD),
-        ])
+        return Signature(
+            [
+                Parameter("args", Parameter.VAR_POSITIONAL),
+                Parameter("kwargs", Parameter.VAR_KEYWORD),
+            ]
+        )
 
 
 def _signature_breakdown(func):
@@ -63,10 +65,11 @@ class Spectator(object):
         Parameters
         ----------
         subclass: type
-            A the :class:`Watchable` subclass whose instance this :class:`Specatator` can respond to.
+            A the :class:`Watchable` subclass whose instance this
+            :class:`Specatator` can respond to.
         """
         if not issubclass(subclass, Watchable):
-            raise TypeError('Expected a Watchable, not %r.' % subclass)
+            raise TypeError("Expected a Watchable, not %r." % subclass)
         self.subclass = subclass
         self._callback_registry = {}
 
@@ -109,11 +112,11 @@ class Spectator(object):
             elif before is None and after is None:
                 raise ValueError("No callbacks were given.")
             if name in self._callback_registry:
-                l = self._callback_registry[name]
+                callback_list = self._callback_registry[name]
             else:
-                l = []
-                self._callback_registry[name] = l
-            l.append((before, after))
+                callback_list = []
+                self._callback_registry[name] = callback_list
+            callback_list.append((before, after))
 
     def remove_callback(self, name, before=None, after=None):
         """Remove a beforeback, and afterback pair from this Spectator
@@ -138,16 +141,16 @@ class Spectator(object):
             del self._callback_registry[name]
         else:
             if name in self._callback_registry:
-                l = self._callback_registry[name]
+                callback_list = self._callback_registry[name]
             else:
-                l = []
-                self._callback_registry[name] = l
-            l.remove((before, after))
-            if len(l) == 0:
+                callback_list = []
+                self._callback_registry[name] = callback_list
+            callback_list.remove((before, after))
+            if len(callback_list) == 0:
                 # cleanup if all callbacks are gone
                 del self._callback_registry[name]
 
-    def wrapper(self, name, args, kwargs):
+    def call(self, obj, name, method, args, kwargs):
         """Trigger a method along with its beforebacks and afterbacks.
 
         Parameters
@@ -159,88 +162,66 @@ class Spectator(object):
         kwargs: dict
             The keyword args that will be passed to the base method
         """
-        ms = getattr(self.subclass, name)
-        if not isinstance(ms, MethodSpectator):
-            raise TypeError(
-                "'%s.%s' has no MethodSpectator" % (
-                self.subclass.__name__, name))
         if name in self._callback_registry:
             beforebacks, afterbacks = zip(*self._callback_registry.get(name, []))
 
             hold = []
             for b in beforebacks:
                 if b is not None:
-                    call = Data(name=name,
-                        kwargs=kwargs.copy(),
-                        args=args[1:])
-                    v = b(args[0], call)
+                    call = Data(name=name, kwargs=kwargs.copy(), args=args)
+                    v = b(obj, call)
                 else:
                     v = None
                 hold.append(v)
 
-            out = ms.basemethod(*args, **kwargs)
+            out = method(*args, **kwargs)
 
             for a, bval in zip(afterbacks, hold):
                 if a is not None:
-                    a(args[0], Data(before=bval,
-                        name=name, value=out))
+                    a(obj, Data(before=bval, name=name, value=out))
                 elif callable(bval):
                     # the beforeback's return value was an
                     # afterback that expects to be called
                     bval(out)
             return out
         else:
-            return ms.basemethod(*args, **kwargs)
+            return method(*args, **kwargs)
 
 
 class MethodSpectator(object):
     """Notifies a :class:`Specator` when the method this descriptor wraps is called."""
 
-    _compile_count = 0
-    _src_str = """def {name}({signature}):
-    args, vargs, kwargs = {arguments}, {variable_positional}, {variable_keyword};
-    return globals()["spectator"].wrapper('{name}', (args + vargs), kwargs)"""
-
-    def __init__(self, basemethod, name=None):
+    def __init__(self, basemethod, name):
         if not callable(basemethod):
-            raise TypeError('Expected a callable, not %r' % basemethod)
+            raise TypeError("Expected a callable, not %r" % basemethod)
         self.basemethod = basemethod
-        self.name = name or basemethod.__name__
-        self.code, self.defaults = self._code(basemethod)
+        self.name = name
 
-    def _code(self, basemethod):
-        sig, args, defaults, varargs, varkwargs = _signature_breakdown(basemethod)
-        src = self._src_str.format(
-            name=self.name,
-            # signature can end with ", /" for positional only params
-            signature=str(sig)[1:-1].replace(", /", ""),
-            arguments=str(tuple(args)).replace("'", ""),
-            variable_positional=varargs or (),
-            variable_keyword=varkwargs or {},
-        )
-        name = re.findall('[A-Z][a-z]*', type(self).__name__)
-        filename = "-".join(name).upper() + "-#%s"
-        code = compile(src, filename % self._compile_count, 'single')
-        type(self)._compile_count += 1
-        return code, tuple(defaults)
+    def call(self, obj, cls):
+        spectator = obj._instance_spectator
 
-    def new_wrapper(self, inst, spectator):
-        evaldict = {"spectator": spectator}
-        eval(self.code, evaldict)
-        # extract wrapper by name
-        new = evaldict[self.name]
-        # assign docstring and defaults
-        new.__doc__ = self.basemethod.__doc__
-        new.__defaults__ = self.defaults
-        return types.MethodType(new, inst)
-
-    def __get__(self, inst, cls):
-        if inst is None:
-            return self
-        elif getattr(inst, "_instance_spectator", None):
-            return self.new_wrapper(inst, inst._instance_spectator)
+        if hasattr(self.basemethod, "__get__"):
+            method = self.basemethod.__get__(obj, cls)
         else:
-            return types.MethodType(self.basemethod, inst)
+            method = self.basemethod
+
+        @wraps(method)
+        def wrapper(*args, **kwargs):
+            return spectator.call(obj, self.name, method, args, kwargs)
+
+        if not hasattr(wrapper, "__wrapped__"):
+            wrapper.__wrapped__ = method
+        return wrapper
+
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        elif hasattr(obj, "_instance_spectator"):
+            return self.call(obj, cls)
+        elif hasattr(self.basemethod, "__get__"):
+            return self.basemethod.__get__(obj, cls)
+        else:
+            return self.basemethod
 
 
 class Watchable(object):
@@ -253,7 +234,7 @@ class Watchable(object):
     if not sys.version_info < (3, 6):
 
         def __init_subclass__(cls, **kwargs):
-            """If a subclass overrides a :class:`MethodSpectator` method, then rewrap it."""
+            # If a subclass overrides a :class:`MethodSpectator` method, then rewrap it.
             for base in cls.mro()[1:]:
                 if issubclass(base, Watchable):
                     for k, v in base.__dict__.items():
@@ -284,8 +265,10 @@ def expose(*methods):
     -----
     This is essentially a decorator version of :func:`expose_as`
     """
+
     def setup(base):
         return expose_as(base.__name__, base, *methods)
+
     return setup
 
 
@@ -309,15 +292,17 @@ def expose_as(name, base, *methods):
     classdict = {}
     for method in methods:
         if not hasattr(base, method):
-            raise AttributeError("Cannot expose '%s', because '%s' "
-                "instances lack this method" % (method, base.__name__))
+            raise AttributeError(
+                "Cannot expose '%s', because '%s' "
+                "instances lack this method" % (method, base.__name__)
+            )
         else:
             classdict[method] = MethodSpectator(getattr(base, method), method)
     return type(name, (base, Watchable), classdict)
 
 
 def watchable(value):
-    """Returns True if the given value is a subclass or instance of :class:`Watchable`."""
+    """Returns True if the given value is a :class:`Watchable` subclass or instance."""
     check = issubclass if inspect.isclass(value) else isinstance
     return check(value, Watchable)
 
@@ -380,7 +365,7 @@ def unwatch(value):
     spectator = watcher(value)
     try:
         del value._instance_spectator
-    except:
+    except Exception:
         pass
     return spectator
 
@@ -438,7 +423,7 @@ class Data(collections.Mapping):
                 if not isinstance(x, slice):
                     break
             else:
-                new = {s.start : s.stop for s in key}
+                new = {s.start: s.stop for s in key}
                 return type(self)(self, **new)
             merge = {}
             for x in key:
@@ -450,16 +435,16 @@ class Data(collections.Mapping):
         return self.__dict__.get(key)
 
     def __setitem__(self, key, value):
-        raise TypeError('%r is immutable')
+        raise TypeError("%r is immutable")
 
     def __setattr__(self, key, value):
-        raise TypeError('%r is immutable')
+        raise TypeError("%r is immutable")
 
     def __delitem__(self, key):
-        raise TypeError('%r is immutable')
+        raise TypeError("%r is immutable")
 
     def __delattr__(self, key):
-        raise TypeError('%r is immutable')
+        raise TypeError("%r is immutable")
 
     def __contains__(self, key):
         return key in tuple(self)

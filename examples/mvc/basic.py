@@ -1,18 +1,18 @@
 from spectate import mvc
 
 
-d = mvc.Dict()
-l = mvc.List()
-s = mvc.Set()
+my_dict = mvc.Dict()
+my_list = mvc.List()
+my_set = mvc.Set()
 
 
-@mvc.view(d)
-@mvc.view(l)
-@mvc.view(s)
+@mvc.view(my_dict)
+@mvc.view(my_list)
+@mvc.view(my_set)
 def printer(event):
     print(event)
 
 
-d['a'] = 1
-l.append(2)
-s.add(3)
+my_dict["a"] = 1
+my_list.append(2)
+my_set.add(3)

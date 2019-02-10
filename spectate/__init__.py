@@ -1,14 +1,3 @@
-"""
-Spectate
-========
+__version__ = "0.3.1"  # evaluated in setup.py
 
-.. automodule:: spectate.spectate
-    :members:
-    :ignore-module-all:
-
-.. automodule:: spectate.mvc
-    :members:
-"""
-
-from .spectate import *
-from ._version import __version__
+from .core import *  # noqa

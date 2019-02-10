@@ -9,32 +9,25 @@ from .utils import Sentinel
 from .base import Model, Control, view
 
 
-__all__ = [
-    'List',
-    'Dict',
-    'Set',
-    'Object',
-    'Oracle',
-    'Undefined',
-]
+__all__ = ["List", "Dict", "Set", "Object", "Undefined"]
 
 
-Undefined = Sentinel('Undefined')
+Undefined = Sentinel("Undefined")
 
 
 class List(Model, list):
-    """An MVC enabled ``list``."""
+    """A :mod:`spectate.mvc` enabled ``list``."""
 
-    _control_setitem = Control('__setitem__')
-    _control_delitem = Control('__delitem__')
-    _control_insert = Control('insert')
-    _control_append = Control('append')
-    _control_extend = Control('extend')
-    _control_pop = Control('pop')
-    _control_clear = Control('clear')
-    _control_remove = Control('remove')
-    _control_sort = Control('sort').before('_control_rearrangement')
-    _control_reverse = Control('reverse').before('_control_rearrangement')
+    _control_setitem = Control("__setitem__")
+    _control_delitem = Control("__delitem__")
+    _control_insert = Control("insert")
+    _control_append = Control("append")
+    _control_extend = Control("extend")
+    _control_pop = Control("pop")
+    _control_clear = Control("clear")
+    _control_remove = Control("remove")
+    _control_sort = Control("sort").before("_control_rearrangement")
+    _control_reverse = Control("reverse").before("_control_rearrangement")
 
     @_control_setitem.before
     def _control_setitem(self, call, notify):
@@ -117,55 +110,71 @@ class List(Model, list):
 
     def _control_rearrangement(self):
         old = self[:]
+
         def _after_rearangement(returned, notify):
             for i, v in enumerate(old):
                 if v != self[i]:
                     notify(index=i, old=v, new=self[i])
+
         return _after_rearangement
 
 
 class Dict(Model, dict):
-    """An MVC enabled ``dict``."""
+    """A :mod:`spectate.mvc` enabled ``dict``."""
 
-    _model_selector_template = '{key}'
+    _control_setitem = (
+        Control("__setitem__", "setdefault")
+        .before("_control_before_setitem")
+        .after("_control_after_setitem")
+    )
 
-    _control_setitem = Control('__setitem__', 'setdefault')
-    _control_delitem = Control('__delitem__', 'pop')
-    _control_update = Control('update')
-    _control_clear = Control('clear')
+    _control_delitem = (
+        Control("__delitem__", "pop")
+        .before("_control_before_delitem")
+        .after("_control_after_delitem")
+    )
 
-    @_control_setitem.before
-    def _control_setitem(self, call, notify):
+    _control_update = (
+        Control("update")
+        .before("_control_before_delitem")
+        .after("_control_after_delitem")
+    )
+
+    _control_clear = (
+        Control("clear")
+        .before("_control_before_clear")
+        .after("_control_after_clear")
+    )
+
+    def _control_before_setitem(self, call, notify):
         key = call.args[0]
         old = self.get(key, Undefined)
         return key, old
 
-    @_control_setitem.after
-    def _control_setitem(self, answer, notify):
+    def _control_after_setitem(self, answer, notify):
         key, old = answer.before
         new = self[key]
         if new != old:
             notify(key=key, old=old, new=new)
 
-    @_control_delitem.before
-    def _control_delitem(self, call, notify):
+    def _control_before_delitem(self, call, notify):
         key = call.args[0]
         try:
-            old = self[key]
+            return key, self[key]
         except KeyError:
+            # the base method will error on its own
             pass
-        else:
-            def _after(returned):
-                notify(key=key, old=old, new=Undefined)
-            return _after
 
-    @_control_update.before
-    def _control_update(self, call, notify):
+    def _control_after_delitem(self, answer, notify):
+        key, old = answer.before
+        notify(key=key, old=old, new=Undefined)
+
+    def _control_before_update(self, call, notify):
         if len(call.args):
             args = call.args[0]
             if inspect.isgenerator(args):
                 # copy generator so it doesn't get exhausted
-                args = itertools.tee(arsg)[1]
+                args = itertools.tee(args)[1]
             new = dict(args)
             new.update(call.kwargs)
         else:
@@ -173,28 +182,32 @@ class Dict(Model, dict):
         old = {k: self.get(k, Undefined) for k in new}
         return old
 
-    @_control_update.after
-    def _control_update(self, answer, notify):
+    def _control_after_update(self, answer, notify):
         for k, v in answer.before.items():
             if self[k] != v:
                 notify(key=k, old=v, new=self[k])
 
-    @_control_clear.before
-    def _control_clear(self, call, notify):
+    def _control_before_clear(self, call, notify):
         return self.copy()
 
-    @_control_clear.after
-    def _control_clear(self, answer, notify):
+    def _control_after_clear(self, answer, notify):
         for k, v in answer.before.items():
             notify(key=k, old=v, new=Undefined)
 
 
 class Set(Model, set):
-    """An MVC enabled ``set``."""
+    """A :mod:`spectate.mvc` enabled ``set``."""
 
     _control_update = Control(
-        "clear", "update", "difference_update", "intersection_update",
-        "add", "pop", "remove", "symmetric_difference_update", "discard",
+        "clear",
+        "update",
+        "difference_update",
+        "intersection_update",
+        "add",
+        "pop",
+        "remove",
+        "symmetric_difference_update",
+        "discard",
     )
 
     @_control_update.before
@@ -210,8 +223,9 @@ class Set(Model, set):
 
 
 class Object(Model):
+    """A :mod:`spectat.mvc` enabled ``object``."""
 
-    _control_attr_change = Control('__setattr__', '__delattr__')
+    _control_attr_change = Control("__setattr__", "__delattr__")
 
     @_control_attr_change.before
     def _control_attr_change(self, call, notify):
@@ -223,73 +237,6 @@ class Object(Model):
         new = getattr(self, attr, Undefined)
         if new != old:
             notify(attr=attr, old=old, new=new)
-
-
-class Oracle(Object):
-
-    def __init__(self, **attrs):
-
-        def try_to_view(path, x):
-            if isinstance(x, Dict):
-                view(x)(MethodType(notify_dict_change, path))
-                for k, v in x.items():
-                    try_to_view(path + (k,), v)
-            elif isinstance(x, List):
-                view(x)(MethodType(notify_list_change, path))
-                for i, v in enumerate(x):
-                    try_to_view(path + (i,), v)
-            elif isinstance(x, Object):
-                view(x)(MethodType(notify_object_change, path))
-                for k, v in x.__dict__.items():
-                    try_to_view(path + (k,), v)
-            elif isinstance(x, Set):
-                view(x)(MethodType(notify_set_change, path))
-                for v in x:
-                    try_to_view(path, v)
-            else:
-                try:
-                    hash(x)
-                except TypeError:
-                    name = type(self).__name__
-                    msg = "%r cannot assign the mutable value %r which is not a 'Model' type"
-                    raise TypeError(msg % (name, x))
-
-        def notify_object_change(path, events, oracle=ref(self)):
-            new_events = []
-            for e in events:
-                try_to_view(path + (e["attr"],), e["new"])
-                new_events.append(e["location": path])
-            oracle()._notify_oracle_views(new_events)
-
-        def notify_dict_change(path, events, oracle=ref(self)):
-            new_events = []
-            for e in events:
-                try_to_view(path + (e["key"],), e["new"])
-                new_events.append(e["location": path])
-            oracle()._notify_oracle_views(new_events)
-
-        def notify_list_change(path, events, oracle=ref(self)):
-            new_events = []
-            for e in events:
-                try_to_view(path + (e["index"],), e["new"])
-                new_events.append(e["location": path])
-            oracle()._notify_oracle_views(new_events)
-
-        def notify_set_change(path, events):
-            oracle()._notify_oracle_event([e["location": path] for e in events])
-
-        object.__setattr__(self, "_notify_root_view", notify_object_change)
-        for k, v in attrs.items():
-            try_to_view((k,), v)
-        self.__dict__.update(attrs)
-
-    def _notify_oracle_views(self, events):
-        events = tuple(events)
-        for view in self._model_views:
-            view(events)
-
-    def _notify_model_views(self, events):
-        self._notify_root_view((), events)
 
 
 # The MIT License (MIT)

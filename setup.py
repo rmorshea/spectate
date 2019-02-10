@@ -1,70 +1,65 @@
 from __future__ import print_function
-from setuptools import find_packages
-
-# the name of the project
-name = "spectate"
-
-#-----------------------------------------------------------------------------
-# Minimal Python version sanity check
-#-----------------------------------------------------------------------------
-
-import sys
-
-v = sys.version_info
-if v[:2] < (2,7) or (v[0] >= 3 and v[:2] < (3,3)):
-    error = "ERROR: %s requires Python version 2.7 or 3.3 or above." % name
-    print(error, file=sys.stderr)
-    sys.exit(1)
-
-#-----------------------------------------------------------------------------
-# get on with it
-#-----------------------------------------------------------------------------
 
 import os
-from glob import glob
-
+import sys
+from setuptools import find_packages
 from distutils.core import setup
 
+# -----------------------------------------------------------------------------
+# Package
+# -----------------------------------------------------------------------------
+
+package = dict(
+    name="spectate",
+    license="MIT",
+    packages=find_packages(),
+    description="Track changes to mutable data types.",
+    classifiers=["Intended Audience :: Developers"],
+    author="Ryan Morshead",
+    author_email="ryan.morshead@gmail.com",
+    url="https://github.com/rmorshea/spectate",
+    keywords=["eventful", "callbacks", "mutable", "MVC", "model", "view", "controller"],
+    platforms="Linux, Mac OS X, Windows",
+)
+
+# -----------------------------------------------------------------------------
+# Basics
+# -----------------------------------------------------------------------------
+
+# paths used to gather files
 here = os.path.abspath(os.path.dirname(__file__))
-root = os.path.join(here, name)
+root = os.path.join(here, package["name"])
 
-packages = find_packages()
+# -----------------------------------------------------------------------------
+# Requirements
+# -----------------------------------------------------------------------------
 
+package["extras_require"] = ({":python_version < '3.6'": ["funcsigs"]},)
 
-requirements = [
-    'six',
-]
+# -----------------------------------------------------------------------------
+# Library Version
+# -----------------------------------------------------------------------------
 
+with open(os.path.join(root, "__init__.py")) as f:
+    for line in f.read().split("\n"):
+        if line.startswith("__version__ = "):
+            package["version"] = eval(line.split("=", 1)[1])
+            break
+    else:
+        print("No version found in %s/__init__.py" % root)
+        sys.exit(1)
 
-with open(os.path.join(root, '_version.py')) as f:
-    namespace = {}
-    exec(f.read(), {}, namespace)
-    version = namespace["__version__"]
+# -----------------------------------------------------------------------------
+# Library Description
+# -----------------------------------------------------------------------------
 
+package["long_description_content_type"] = "text/markdown"
+with open(os.path.join(here, "README.md")) as f:
+    package["long_description"] = f.read()
 
-with open(os.path.join(here, 'README.md')) as f:
-    long_description = f.read()
+# -----------------------------------------------------------------------------
+# Install It
+# -----------------------------------------------------------------------------
 
-
-if __name__ == '__main__':
-    setup(
-        name=name,
-        version=version,
-        packages=packages,
-        description="Create classes whose instances have tracked methods",
-        long_description=long_description,
-        long_description_content_type='text/markdown',
-        author="Ryan Morshead",
-        author_email="ryan.morshead@gmail.com",
-        url="https://github.com/rmorshea/spectate",
-        license='MIT',
-        platforms="Linux, Mac OS X, Windows",
-        keywords=["eventful", "callbacks"],
-        install_requires=requirements,
-        classifiers=[
-            'Intended Audience :: Developers',
-            'Programming Language :: Python',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.3',
-            ],
-    )
+if __name__ == "__main__":
+    setup(**package)

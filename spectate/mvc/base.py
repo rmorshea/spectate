@@ -1,122 +1,163 @@
 # See End Of File For Licensing
+from inspect import signature
+from functools import wraps
+from typing import Union, Callable, Optional
 
-from contextlib import contextmanager
-from functools import wraps, partial
-from collections import defaultdict
+from spectate.core import Watchable, watched, Data, MethodSpectator
 
-from .utils import memory_safe_function, Sentinel
-from ..spectate import Watchable, Data, MethodSpectator, expose, watched
-
-__all__ = [
-    'Model',
-    'Control',
-    'view',
-    'unview',
-    'is_model',
-    'hold',
-    'mute',
-]
+__all__ = ["Model", "Control", "view", "unview", "views"]
 
 
-def is_model(model, raises=False):
-    if isinstance(model, Model):
-        return True
-    elif raises:
-        raise TypeError('Expected a Model, not %r.' % model)
-    else:
-        return False
+def views(model: "Model") -> list:
+    """Return a model's views keyed on what events they respond to.
 
-
-@contextmanager
-def hold(model):
-    is_model(model, raises=True)
-    events = []
-    redirect = lambda e : events.extend(e)
-    restore = model.__dict__.get('_notify_model_views')
-    model._notify_model_views = redirect
-
-    try:
-        yield events
-    finally:
-        if restore is None:
-            del model._notify_model_views
-        else:
-            model._notify_model_views = restore
-        model._notify_model_views(tuple(events))
-
-
-@contextmanager
-def mute(model):
-    is_model(model, raises=True)
-    redirect = lambda e : None
-    restore = model.__dict__.get('_notify_model_views')
-    model._notify_model_views = redirect
-    try:
-        yield
-    finally:
-        if restore is None:
-            del model._notify_model_views
-        else:
-            model._notify_model_views = restore
-
-
-def views(model):
-    """Return a model's views keyed on what events they respond to."""
-    is_model(model, raises=True)
+    Model views are added by calling :func:`view` on a model.
+    """
+    if not isinstance(model, Model):
+        raise TypeError("Expected a Model, not %r." % model)
     return model._model_views[:]
 
 
-def view(model):
-    is_model(model, raises=True)
-    def setup(function):
-        # we want to avoid circular references.
-        safe = memory_safe_function(function)
-        model._model_views.append(safe)
-        return safe
-    return setup
+def view(model: "Model", *functions: Callable) -> Optional[Callable]:
+    """A decorator for registering a callback to a model
+
+    Parameters:
+        model: the model object whose changes the callback should respond to.
+
+    Examples:
+        .. code-block:: python
+
+            from spectate import mvc
+
+            items = mvc.List()
+
+            @mvc.view(items)
+            def printer(items, events):
+                for e in events:
+                    print(e)
+
+            items.append(1)
+    """
+    if not isinstance(model, Model):
+        raise TypeError("Expected a Model, not %r." % model)
+
+    def setup(function: Callable):
+        model._model_views.append(function)
+        return function
+
+    if functions:
+        for f in functions:
+            setup(f)
+    else:
+        return setup
 
 
-def unview(model, function):
+def unview(model: "Model", function: Callable):
+    """Remove a view callbcak from a model.
+
+    Parameters:
+        model: The model which contains the view function.
+        function: The callable which was registered to the model as a view.
+
+    Raises:
+        ValueError: If the given ``function`` is not a view of the given ``model``.
+    """
     model._model_views.remove(function)
 
 
 class Control:
+    """An object used to define control methods on a :class:`Model`
 
-    def __init__(self, *methods):
+    A "control" method on a :class:`Model` is one which reacts to another method being
+    called. For example there is a control method on the
+    :class:`~spectate.mvc.models.List`
+    which responds when :meth:`~spectate.mvc.models.List.append` is called.
+
+    A control method is a slightly modified :ref:`beforeback <Spectator Beforebacks>` or
+    :ref:`afterback <Spectator Afterbacks>` that accepts an extra ``notify`` argument.
+    These are added to a control object by calling :meth:`Control.before` or
+    :meth:`Control.after` respectively. The ``notify`` arugment is a function which
+    allows a control method to send messages to :func:`views <view>` that are registered
+    to a :class:`Model`.
+
+    Parameters:
+        methods:
+            The names of the methods on the model which this control will react to
+            When they are called.
+
+    Examples:
+        Control methods are registered to a :class:`Control` with a ``str`` or function.
+        A string may refer to the name of a method on a `Model` while a function should
+        be decorated under the same name as the :class:`Control` object to preserve the
+        namespace.
+
+        .. code-block:: python
+
+            from spectate import mvc
+
+            class X(mvc.Model):
+
+                _control_method = mvc.Control("method").before("_control_before_method")
+
+                def _control_before_method(self, call, notify):
+                    print("before")
+
+                # Note how the method uses the same name. It
+                # would be redundant to use a different one.
+                @_control_a.after
+                def _control_method(self, answer, notify):
+                    print("after")
+
+                def method(self):
+                    print("during")
+
+            x = X()
+            x.method()
+
+        .. code-block:: text
+
+            before
+            during
+            after
+    """
+
+    def __init__(self, *methods: str):
         self.methods = methods
         self.name = None
 
-    def before(self, callback):
+    def __get__(self, obj, cls):
+        if obj is None:
+            return self
+        else:
+            return BoundControl(obj, self)
+
+    def before(self, callback: Union[Callable, str]) -> "Control":
+        """Register a control method that reacts before the trigger method is called.
+
+        Parameters:
+            callback:
+                The control method. If given as a callable, then that function will be
+                used as the callback. If given as a string, then the control will look
+                up a method with that name when reacting (useful when subclassing).
+        """
         if isinstance(callback, Control):
             callback = callback._before
-        elif not isinstance(callback, str):
-            callback = self._wrap(callback)
         self._before = callback
         return self
 
-    def after(self, callback):
+    def after(self, callback: Union[Callable, str]) -> "Control":
+        """Register a control method that reacts after the trigger method is called.
+
+        Parameters:
+            callback:
+                The control method. If given as a callable, then that function will be
+                used as the callback. If given as a string, then the control will look
+                up a method with that name when reacting (useful when subclassing).
+        """
         if isinstance(callback, Control):
             callback = callback._after
-        elif not isinstance(callback, str):
-            callback = self._wrap(callback)
         self._after = callback
         return self
-
-    @staticmethod
-    def _wrap(function):
-        if function is None:
-            return None
-        @wraps(function)
-        def callback(self, *args, **kwargs):
-            events = []
-            def notify(**event):
-                events.append(Data(event))
-            args = args + (notify,)
-            result = function(self, *args, **kwargs)
-            if events:
-                self._notify_model_views(tuple(events))
-            return result
-        return callback
 
     _after, _before = None, None
 
@@ -124,19 +165,118 @@ class Control:
         if not issubclass(cls, Model):
             raise TypeError("Can only define a control on a Model, not %r" % cls)
         if self.name:
-            msg = 'Control was defined twice - %r and %r.'
+            msg = "Control was defined twice - %r and %r."
             raise RuntimeError(msg % (self.name, name))
         else:
             self.name = name
         if isinstance(self._after, str):
-            self._after = self._wrap(getattr(cls, self._after))
+            self._after = getattr(cls, self._after)
         if isinstance(self._before, str):
-            self._before = self._wrap(getattr(cls, self._before))
+            self._before = getattr(cls, self._before)
         for m in self.methods:
             setattr(cls, m, MethodSpectator(getattr(cls, m), m))
 
 
+class BoundControl:
+
+    def __init__(self, obj, ctrl):
+        self._obj = obj
+        self._cls = type(obj)
+        self._before = ctrl._before
+        self._after = ctrl._after
+        self.methods = ctrl.methods
+
+    @property
+    def before(self):
+        if hasattr(self._after, "__get__"):
+            before = self._before.__get__(self._obj, self._cls)
+        else:
+            before = self._before
+
+        @wraps(before)
+        def beforeback(value, call):
+            events = []
+
+            def notify(**event):
+                events.append(Data(event))
+
+            def parameters():
+                meth = getattr(value, call.name)
+                bound = signature(meth).bind(*call.args, **call.kwargs)
+                return dict(bound.arguments)
+
+            call = call["parameters": parameters]
+            result = before(call, notify)
+            if events:
+                self._obj._notify_model_views(tuple(events))
+            return result
+
+        return beforeback
+
+    @property
+    def after(self):
+        if hasattr(self._after, "__get__"):
+            after = self._after.__get__(self._obj, self._cls)
+        else:
+            after = self._after
+
+        @wraps(after)
+        def afterback(value, answer):
+            events = []
+
+            def notify(**event):
+                events.append(Data(event))
+
+            result = after(answer, notify)
+            if events:
+                self._obj._notify_model_views(tuple(events))
+            return result
+
+        return afterback
+
+
 class Model(Watchable):
+    """An object that can be :class:`controlled <Control>` and :func:`viewed <view>`.
+
+    Users should define :class:`Control` methods and then :func:`view` the change
+    events those controls emit. This process starts by defining controls on a subclass
+    of :class:`Model`.
+
+    Examples:
+        .. code-block:: python
+
+            from specate import mvc
+
+            class Object(mvc.Model):
+
+                _control_attr_change = mvc.Control('__setattr__', '__delattr__')
+
+                @_control_attr_change.before
+                def _control_attr_change(self, call, notify):
+                    return call.args[0], getattr(self, call.args[0], Undefined)
+
+                @_control_attr_change.after
+                def _control_attr_change(self, answer, notify):
+                    attr, old = answer.before
+                    new = getattr(self, attr, Undefined)
+                    if new != old:
+                        notify(attr=attr, old=old, new=new)
+
+            o = Object()
+
+            @mvc.view(o)
+            def printer(o, events):
+                for e in events:
+                    print(e)
+
+            o.a = 1
+            o.b = 2
+
+        .. code-block:: text
+
+            {'attr': 'a', 'old': Undefined, 'new': 1}
+            {'attr': 'b', 'old': Undefined, 'new': 2}
+    """
 
     _model_controls = ()
 
@@ -149,19 +289,16 @@ class Model(Watchable):
     def __new__(cls, *args, **kwargs):
         self, spectator = watched(super().__new__, cls)
         for name in cls._model_controls:
-            ctrl = getattr(cls, name)
+            ctrl = getattr(self, name)
             for method in ctrl.methods:
-                before, after = ctrl._before, ctrl._after
-                spectator.callback(method, before, after)
+                spectator.callback(method, ctrl.before, ctrl.after)
         object.__setattr__(self, "_model_views", [])
         return self
 
     def _notify_model_views(self, events):
         for view in self._model_views:
-            view(events)
+            view(self, events)
 
-
-_Empty = Sentinel('Empty')
 
 # The MIT License (MIT)
 

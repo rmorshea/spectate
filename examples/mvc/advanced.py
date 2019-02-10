@@ -2,7 +2,6 @@ from spectate import mvc
 
 
 class Counter(mvc.Model):
-
     def __init__(self):
         self.x = 0
 
@@ -13,7 +12,7 @@ class Counter(mvc.Model):
         self.x -= amount
 
     # define a control for incrementing and decrementing
-    _control_change = mvc.Control('increment', 'decrement')
+    _control_change = mvc.Control("increment", "decrement")
 
     # register a beforeback to the control
     @_control_change.before

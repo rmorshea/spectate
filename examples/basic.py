@@ -1,9 +1,8 @@
 from spectate import expose, watch
 
 
-@expose('increment', 'decrement')
+@expose("increment", "decrement")
 class Counter(object):
-
     def __init__(self):
         self.x = 0
 
@@ -22,8 +21,8 @@ def changed(counter, answer):
     print(counter.x)
 
 
-spectator.callback('increment', after=changed)
-spectator.callback('decrement', after=changed)
+spectator.callback("increment", after=changed)
+spectator.callback("decrement", after=changed)
 
 # see what happens when we modify the counter:
 

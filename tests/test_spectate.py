@@ -1,10 +1,17 @@
 import sys
-import inspect
 from pytest import raises
-from spectate.spectate import (
-    expose, expose_as, watch, watched,
-    watcher, unwatch, watchable, Watchable,
-    MethodSpectator, Spectator, Data,
+from spectate.core import (
+    expose,
+    expose_as,
+    watch,
+    watched,
+    watcher,
+    unwatch,
+    watchable,
+    Watchable,
+    MethodSpectator,
+    Spectator,
+    Data,
 )
 
 try:
@@ -19,10 +26,8 @@ def test_watchable():
 
 
 def test_expose():
-
-    @expose('increment')
+    @expose("increment")
     class Counter(object):
-
         def __init__(self):
             self.x = 0
 
@@ -30,20 +35,19 @@ def test_expose():
             self.x += amount
 
     assert watchable(Counter)
-    assert Counter.__name__ == 'Counter'
+    assert Counter.__name__ == "Counter"
     assert isinstance(Counter.increment, MethodSpectator)
 
 
 def test_expose_as():
-    WatchableList = expose_as("WatchableList", list, 'append')
+    WatchableList = expose_as("WatchableList", list, "append")
     assert watchable(WatchableList)
     assert issubclass(WatchableList, list)
-    assert WatchableList.__name__ == 'WatchableList'
+    assert WatchableList.__name__ == "WatchableList"
     assert isinstance(WatchableList.append, MethodSpectator)
 
 
 class Thing(object):
-
     def func(self, a, b, c=None, d=None, *e, **f):
         return (self, a, b, c, d, e, f)
 
@@ -93,13 +97,11 @@ def test_unwatch():
 
 
 def test_method_spectator():
-    MethodSpectator._compile_count = 0
-    WatchableList = expose_as("WatchableList", list, 'append')
-    assert MethodSpectator._compile_count == 1
+    WatchableList = expose_as("WatchableList", list, "append")
     append = WatchableList.append
 
     assert append.basemethod is list.append
-    assert append.name == 'append'
+    assert append.name == "append"
 
     wl, spectator = watched(WatchableList)
     wl.append(1)
@@ -108,34 +110,31 @@ def test_method_spectator():
 
 
 def test_method_spectator_signature():
-    WatchableThing = expose_as("WatchableThing", Thing, 'func')
+    WatchableThing = expose_as("WatchableThing", Thing, "func")
     thing, sectator = watched(WatchableThing)
-    assert MethodSpectator._compile_count == 2
-    assert (
-        signature(Thing().func) == signature(thing.func)
-    )
+    assert signature(Thing().func) == signature(thing.func)
 
 
 def check_answer(checklist, inst, name, a, b, c=None, d=None, *e, **f):
     args, kwargs = condense(a, b, c, d, *e, **f)
-    checklist.append(Data(
-        name=name,
-        value=(inst, a, b, c, d, e, f),
-        before=Data(
+    checklist.append(
+        Data(
             name=name,
-            args=args,
-            kwargs=kwargs))
+            value=(inst, a, b, c, d, e, f),
+            before=Data(name=name, args=args, kwargs=kwargs),
+        )
     )
     getattr(inst, name)(a, b, c, d, *e, **f)
 
 
-condense = lambda *a, **kw: (a, kw)
+def condense(*a, **kw):
+    return (a, kw)
 
 
 def test_beforeback_afterback():
     checklist = []
 
-    WatchableThing = expose_as("WatchableThing", Thing, 'func')
+    WatchableThing = expose_as("WatchableThing", Thing, "func")
     wt = WatchableThing()
     spectator = watch(wt)
 
@@ -145,24 +144,24 @@ def test_beforeback_afterback():
     def beforeback(inst, call):
         callbacks_called[0] += 1
         return call
+
     def afterback(inst, answer):
         callbacks_called[1] += 1
         assert checklist[-1] == answer
 
-    spectator.callback('func',
-        before=beforeback, after=afterback)
+    spectator.callback("func", before=beforeback, after=afterback)
 
-    check_answer(checklist, wt, 'func', 1, 2, c=3)
-    check_answer(checklist, wt, 'func', 1, 2, d=3)
-    check_answer(checklist, wt, 'func', 1, 2, 3, 4, 5)
-    check_answer(checklist, wt, 'func', 1, 2, d=3, f=4)
+    check_answer(checklist, wt, "func", 1, 2, c=3)
+    check_answer(checklist, wt, "func", 1, 2, d=3)
+    check_answer(checklist, wt, "func", 1, 2, 3, 4, 5)
+    check_answer(checklist, wt, "func", 1, 2, d=3, f=4)
     assert callbacks_called == [4, 4]
 
 
 def test_callback_closure():
     checklist = []
 
-    WatchableThing = expose_as("WatchableThing", Thing, 'func')
+    WatchableThing = expose_as("WatchableThing", Thing, "func")
     wt = WatchableThing()
     spectator = watch(wt)
 
@@ -170,26 +169,24 @@ def test_callback_closure():
 
     def callback(inst, call):
         callbacks_called[0] += 1
+
         def closure(value):
             callbacks_called[1] += 1
-            assert (checklist[-1] == Data(
-                name=call.name, value=value,
-                before=call))
+            assert checklist[-1] == Data(name=call.name, value=value, before=call)
+
         return closure
 
-    spectator.callback('func', callback)
+    spectator.callback("func", callback)
 
-    check_answer(checklist, wt, 'func', 1, 2, c=3)
-    check_answer(checklist, wt, 'func', 1, 2, d=3)
-    check_answer(checklist, wt, 'func', 1, 2, 3, 4, 5)
-    check_answer(checklist, wt, 'func', 1, 2, d=3, f=4)
+    check_answer(checklist, wt, "func", 1, 2, c=3)
+    check_answer(checklist, wt, "func", 1, 2, d=3)
+    check_answer(checklist, wt, "func", 1, 2, 3, 4, 5)
+    check_answer(checklist, wt, "func", 1, 2, d=3, f=4)
     assert callbacks_called == [4, 4]
 
 
 def test_callback_multiple():
-
     class Test(object):
-
         def a(self):
             pass
 
@@ -199,7 +196,8 @@ def test_callback_multiple():
     WatchableTest = expose_as("WatchableTest", Test, "a", "b")
     wt, spectator = watched(WatchableTest)
 
-    callback = lambda value, call: None
+    def callback(value, call):
+        pass
 
     spectator.callback(("a", "b"), callback)
 
@@ -215,15 +213,12 @@ def test_callback_multiple():
 if not sys.version_info < (3, 6):
 
     def test_subclass_override():
-
-        @expose('method')
+        @expose("method")
         class Parent:
-
             def method(self):
                 pass
 
         class Child(Parent):
-
             def method(self):
                 pass
 
@@ -234,37 +229,38 @@ if not sys.version_info < (3, 6):
 def test_data_is_immutable():
     d = Data(a=0)
     with raises(TypeError):
-        d['a'] = 1
+        d["a"] = 1
     with raises(TypeError):
         d.a = 1
     with raises(TypeError):
-        del d['a']
+        del d["a"]
     with raises(TypeError):
         del d.a
-    assert d == {'a': 0}
+    assert d == {"a": 0}
 
 
 def test_none_is_empty_data():
     d = Data(a=None)
     assert d == {}
-    assert 'b' not in d
-    assert d['a'] is None
+    assert "b" not in d
+    assert d["a"] is None
 
 
 def test_data_evolution():
     d0 = Data(a=0)
-    d1 = d0['b': 1]
-    assert d1 == {'a': 0, 'b': 1}
-    d2 = d1['b': 2, 'c': 3]
-    assert d2 == {'a': 0, 'b': 2, 'c': 3}
-    d3 = d2[{'b': 3, 'c': 4}]
-    d4 = d3['b': None, 'c': None]
+    d1 = d0["b":1]
+    assert d1 == {"a": 0, "b": 1}
+    d2 = d1["b":2, "c":3]
+    assert d2 == {"a": 0, "b": 2, "c": 3}
+    d3 = d2[{"b": 3, "c": 4}]
+    d4 = d3["b":None, "c":None]
     assert d4 == d0
-    d5 = d4[{'a': None}]
+    d5 = d4[{"a": None}]
     assert d5 == {}
-    d6 = d5[{'a': 1}, {'b': 2}]
-    assert d6 == {'a': 1, 'b': 2}
+    d6 = d5[{"a": 1}, {"b": 2}]
+    assert d6 == {"a": 1, "b": 2}
+
 
 def test_data_is_mapping():
-    assert dict(Data(a=0, b=1)) == {'a': 0, 'b': 1}
-    assert dict(**Data(a=0, b=1)) == {'a': 0, 'b': 1}
+    assert dict(Data(a=0, b=1)) == {"a": 0, "b": 1}
+    assert dict(**Data(a=0, b=1)) == {"a": 0, "b": 1}

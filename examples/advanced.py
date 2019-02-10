@@ -1,22 +1,13 @@
 from spectate import expose, watch
 
 
-@expose('__setattr__', '__delattr__')
+@expose("__setattr__", "__delattr__")
 class Data(object):
-
     def __init__(self):
         self._callbacks = []
         spectator = watch(self)
-        spectator.callback(
-            '__setattr__',
-            self._before_update,
-            self._after_update,
-        )
-        spectator.callback(
-            '__delattr__',
-            self._before_update,
-            self._after_update,
-        )
+        spectator.callback("__setattr__", self._before_update, self._after_update)
+        spectator.callback("__delattr__", self._before_update, self._after_update)
 
     @staticmethod
     def _before_update(data, call):
@@ -37,20 +28,19 @@ class Data(object):
 
 
 class User(Data):
-
     def __init__(self, name, description):
         super(User, self).__init__()
         self.name = name
         self.description = description
 
 
-user = User('Paul', 'a new user')
+user = User("Paul", "a new user")
 
 
 @user.watch
 def printer(key, old, new):
-    print('%s : %r -> %r' % (key, old, new))
+    print("%s : %r -> %r" % (key, old, new))
 
 
-user.name = 'Paul Jones'
-user.description = 'updated user description'
+user.name = "Paul Jones"
+user.description = "updated user description"
