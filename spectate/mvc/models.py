@@ -248,6 +248,9 @@ class Object(Model):
 
     _control_attr_change = Control("__setattr__", "__delattr__")
 
+    def __init__(self, *args, **kwargs):
+        self.__dict__.update(*args, **kwargs)
+
     @_control_attr_change.before
     def _control_attr_change(self, call, notify):
         return call.args[0], getattr(self, call.args[0], Undefined)
