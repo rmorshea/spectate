@@ -246,7 +246,7 @@ def test_data_evolution():
     d2 = d1["b":2, "c":3]
     assert d2 == {"a": 0, "b": 2, "c": 3}
     d3 = d2[{"b": 3, "c": 4}]
-    assert d3 == {"a": 1, "b": 3, "c": 4}
+    assert d3 == {"a": 0, "b": 3, "c": 4}
 
     d0 = Data()
     d1 = d0[{"a": 1}, {"b": 2}]

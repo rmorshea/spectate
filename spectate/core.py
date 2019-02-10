@@ -407,8 +407,7 @@ class Data(collections.Mapping):
     """
 
     def __init__(self, *args, **kwargs):
-        items = dict(*args, **kwargs).items()
-        self.__dict__.update(i for i in items)
+        self.__dict__.update(*args, **kwargs)
 
     def __getattr__(self, key):
         return None
