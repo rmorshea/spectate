@@ -28,7 +28,7 @@ Register a view function to it that observes changes
 .. code-block:: python
 
     @mvc.view(l)
-    def printer(events):
+    def printer(l, events):
         for e in events:
             print(e)
 

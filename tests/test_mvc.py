@@ -1,4 +1,3 @@
-import sys
 from pytest import importorskip, raises
 
 from spectate.core import MethodSpectator

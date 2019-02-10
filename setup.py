@@ -34,7 +34,7 @@ root = os.path.join(here, package["name"])
 # Requirements
 # -----------------------------------------------------------------------------
 
-package["extras_require"] = ({":python_version < '3.6'": ["funcsigs"]},)
+package["extras_require"] = {":python_version < '3.6'": ["funcsigs"]}
 
 # -----------------------------------------------------------------------------
 # Library Version

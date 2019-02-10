@@ -1,8 +1,6 @@
 # See End Of File For Licensing
 
-import re
 import sys
-import types
 import inspect
 import collections
 from functools import wraps

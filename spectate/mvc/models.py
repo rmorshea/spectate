@@ -2,11 +2,9 @@
 
 import inspect
 import itertools
-from weakref import ref
-from types import MethodType
 
 from .utils import Sentinel
-from .base import Model, Control, view
+from .base import Model, Control
 
 
 __all__ = ["List", "Dict", "Set", "Object", "Undefined"]

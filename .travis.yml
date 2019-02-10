@@ -17,7 +17,7 @@ matrix:
     - name: "dist"
       python: 3.7
       env:
-        - TEST_CMD="python setup.py sdist bdist_wheel; twine check dist/*"
+        - TEST_CMD="python setup.py sdist bdist_wheel; pip install readme_renderer; twine check dist/*"
     - name: "black"
       python: 3.7
       env:
