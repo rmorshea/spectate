@@ -1,13 +1,22 @@
-# -------------
+# Python 3 Only
+# =============
+black;python_version>="3.6"
+
+# Python 2 Compatibility
+# ====================
+funcsigs;python_version<"3.6"
+
+# Distribution
+# ============
+twine
+cmarkgfm
+
 # Documentation
-# -------------
+# =============
+sphinx-rtd-theme
+sphinx-autodoc-typehints
 
-sphinxcontrib-napoleon
-sphinx_materialdesign_theme
-
-# -------
 # Testing
-# -------
-
+# =======
 pytest
-funcsigs
+flake8

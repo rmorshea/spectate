@@ -1,18 +1,38 @@
+sudo: false
+dist: xenial
 language: python
-python:
-  - "2.7"
-  - "3.3"
-  - "3.4"
-  - "3.5"
-  - "3.6"
-  - "nightly"
+
+cache: pip
 install:
-  # command to install dependencies
-  - pip install . -r requirements.txt
-script:
-  # command to run tests
-  - python -m pytest --doctest-ignore-import-error
-notifications:
-  email:
-    on_success: change
-    on_failure: change
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+  - pip install .
+env:
+  - TEST_CMD="pytest"
+
+script: eval $TEST_CMD
+
+matrix:
+  include:
+    - name: "dist"
+      python: 3.7
+      env:
+        - TEST_CMD="python setup.py sdist bdist_wheel; pip install readme_renderer; twine check dist/*"
+    - name: "black"
+      python: 3.7
+      env:
+        - TEST_CMD="black --verbose ."
+    - name: "flake8"
+      python: 3.7
+      env:
+        - TEST_CMD="flake8"
+    - name: "python-2.7"
+      python: 2.7
+    - name: "python-3.5"
+      python: 3.5
+    - name: "python-3.6"
+      python: 3.6
+    - name: "python-3.7"
+      python: 3.7
+    - name: "python-3.8-dev"
+      python: 3.8-dev
