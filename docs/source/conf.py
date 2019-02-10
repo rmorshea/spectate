@@ -17,6 +17,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath("..")))
 
+import spectate
+
 # -- Project information -----------------------------------------------------
 
 project = "Spectate"
@@ -24,9 +26,9 @@ copyright = "2018, Ryan Morshead"
 author = "Ryan Morshead"
 
 # The short X.Y version
-version = ""
+version = ".".join(spectate.__version__.split(".")[:2])
 # The full version, including alpha/beta/rc tags
-release = "0.2.1"
+release = spectate.__version__
 
 # -- General configuration ---------------------------------------------------
 
