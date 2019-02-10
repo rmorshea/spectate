@@ -14,10 +14,10 @@
 
 import os
 import sys
+from importlib import import_module
 
 sys.path.insert(0, os.path.dirname(os.path.abspath("..")))
-
-import spectate
+spectate = import_module("spectate")
 
 # -- Project information -----------------------------------------------------
 
