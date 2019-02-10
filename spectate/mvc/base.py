@@ -178,7 +178,6 @@ class Control:
 
 
 class BoundControl:
-
     def __init__(self, obj, ctrl):
         self._obj = obj
         self._cls = type(obj)
@@ -207,7 +206,7 @@ class BoundControl:
                 bound = signature(meth).bind(*call.args, **call.kwargs)
                 return dict(bound.arguments)
 
-            call = call["parameters": parameters]
+            call = call["parameters":parameters]
             result = before(call, notify)
             if events:
                 self._obj._notify_model_views(tuple(events))

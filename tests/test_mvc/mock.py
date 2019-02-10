@@ -1,5 +1,3 @@
-from collections import Counter as HashCounter
-
 from spectate import mvc
 
 

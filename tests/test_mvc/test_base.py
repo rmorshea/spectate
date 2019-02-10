@@ -1,4 +1,4 @@
-from pytest import importorskip, raises
+from pytest import raises
 
 from spectate.core import MethodSpectator
 from spectate import mvc
@@ -12,6 +12,7 @@ def test_control_is_only_for_model():
 
         class X:
             _control = mvc.Control()
+
 
 def test_control_decoration():
 

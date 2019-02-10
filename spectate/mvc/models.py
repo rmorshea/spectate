@@ -31,24 +31,17 @@ class List(Model, list):
         .before("_control_before_insert")
         .after("_control_after_insert")
     )
-    _control_append = (
-        Control("append")
-        .after("_control_after_append")
-    )
+    _control_append = Control("append").after("_control_after_append")
     _control_extend = (
         Control("extend")
         .before("_control_before_extend")
         .after("_control_after_extend")
     )
     _control_pop = (
-        Control("pop")
-        .before("_control_before_pop")
-        .after("_control_after_delitem")
+        Control("pop").before("_control_before_pop").after("_control_after_delitem")
     )
     _control_clear = (
-        Control("clear")
-        .before("_control_before_clear")
-        .after("_control_after_clear")
+        Control("clear").before("_control_before_clear").after("_control_after_clear")
     )
     _control_remove = (
         Control("remove")
@@ -161,9 +154,7 @@ class Dict(Model, dict):
     )
 
     _control_clear = (
-        Control("clear")
-        .before("_control_before_clear")
-        .after("_control_after_clear")
+        Control("clear").before("_control_before_clear").after("_control_after_clear")
     )
 
     def _control_before_setitem(self, call, notify):

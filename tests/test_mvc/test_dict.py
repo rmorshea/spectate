@@ -12,42 +12,42 @@ _method_call_and_expected_event = [
         "method": "__setitem__",
         "args": ["a", 1],
         "kwargs": {},
-        "events": [{"old": None, "new": 1, "key": "a"}]
+        "events": [{"old": None, "new": 1, "key": "a"}],
     },
     {
         "value": {},
         "method": "__setitem__",
         "args": ["a", 1],
         "kwargs": {},
-        "events": [{"old": undef, "new": 1, "key": "a"}]
+        "events": [{"old": undef, "new": 1, "key": "a"}],
     },
     {
         "value": {"a": None},
         "method": "setdefault",
         "args": ["a", 1],
         "kwargs": {},
-        "events": []
+        "events": [],
     },
     {
         "value": {},
         "method": "setdefault",
         "args": ["a", 1],
         "kwargs": {},
-        "events": [{"old": undef, "new": 1, "key": "a"}]
+        "events": [{"old": undef, "new": 1, "key": "a"}],
     },
     {
         "value": {"a": 1},
         "method": "__delitem__",
         "args": ["a"],
         "kwargs": {},
-        "events": [{"old": 1, "new": undef, "key": "a"}]
+        "events": [{"old": 1, "new": undef, "key": "a"}],
     },
     {
         "value": {"a": 1},
         "method": "pop",
         "args": ["a"],
         "kwargs": {},
-        "events": [{"old": 1, "new": undef, "key": "a"}]
+        "events": [{"old": 1, "new": undef, "key": "a"}],
     },
     {
         "value": {},
@@ -57,7 +57,7 @@ _method_call_and_expected_event = [
         "events": [
             {"old": undef, "new": 1, "key": "a"},
             {"old": undef, "new": 2, "key": "b"},
-        ]
+        ],
     },
     {
         "value": {"a": None, "b": None},
@@ -67,7 +67,7 @@ _method_call_and_expected_event = [
         "events": [
             {"old": None, "new": 1, "key": "a"},
             {"old": None, "new": 2, "key": "b"},
-        ]
+        ],
     },
     {
         "value": {"a": 1, "b": 2},
@@ -77,15 +77,9 @@ _method_call_and_expected_event = [
         "events": [
             {"old": 1, "new": undef, "key": "a"},
             {"old": 2, "new": undef, "key": "b"},
-        ]
+        ],
     },
-    {
-        "value": {},
-        "method": "clear",
-        "args": [],
-        "kwargs": {},
-        "events": [],
-    },
+    {"value": {}, "method": "clear", "args": [], "kwargs": {}, "events": []},
 ]
 
 
@@ -97,7 +91,6 @@ def test_basic_events(expectation):
     kwargs = expectation.get("kwargs", {})
     method(*args, **kwargs)
     expected_events = expectation["events"]
-    assert (
-        events_to_comparable_list(actual_events) ==
-        events_to_comparable_list(expected_events)
+    assert events_to_comparable_list(actual_events) == events_to_comparable_list(
+        expected_events
     )

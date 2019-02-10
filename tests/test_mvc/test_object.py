@@ -12,27 +12,21 @@ _method_call_and_expected_event = [
         "method": "__setattr__",
         "args": ["a", 1],
         "kwargs": {},
-        "events": [
-            {"old": undef, "new": 1, "attr": "a"},
-        ]
+        "events": [{"old": undef, "new": 1, "attr": "a"}],
     },
     {
         "value": {"a": None},
         "method": "__setattr__",
         "args": ["a", 1],
         "kwargs": {},
-        "events": [
-            {"old": None, "new": 1, "attr": "a"},
-        ]
+        "events": [{"old": None, "new": 1, "attr": "a"}],
     },
     {
         "value": {"a": 1},
         "method": "__delattr__",
         "args": ["a"],
         "kwargs": {},
-        "events": [
-            {"old": 1, "new": undef, "attr": "a"},
-        ]
+        "events": [{"old": 1, "new": undef, "attr": "a"}],
     },
 ]
 
@@ -45,7 +39,6 @@ def test_basic_events(expectation):
     kwargs = expectation.get("kwargs", {})
     method(*args, **kwargs)
     expected_events = expectation["events"]
-    assert (
-        events_to_comparable_list(actual_events) ==
-        events_to_comparable_list(expected_events)
+    assert events_to_comparable_list(actual_events) == events_to_comparable_list(
+        expected_events
     )
