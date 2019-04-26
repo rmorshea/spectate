@@ -72,3 +72,43 @@ def test_control_events_were_sent():
         {"old": -1, "new": 2},
         {"old": 2, "new": -2},
     ]
+
+
+def test_override_control_methods_in_subclass():
+    class MyCounter(Counter):
+        def _control_before_change(self, call, notify):
+            notify(message="before")
+            return super()._control_before_change(call, notify)
+
+    counter, events = model_events(MyCounter)
+
+    counter.increment(1)
+
+    assert events == [{"message": "before"}, {"old": 0, "new": 1}]
+
+
+def test_add_new_control_in_subclass():
+    class MyCounter(Counter):
+
+        _added_control = mvc.Control("increment").before("_added_before")
+
+        def _added_before(self, call, notify):
+            notify(message="before")
+
+    counter, events = model_events(MyCounter)
+
+    counter.increment(1)
+
+    assert events == [{"message": "before"}, {"old": 0, "new": 1}]
+
+
+def test_delete_controls_in_subclass():
+    class MyCounter(Counter):
+
+        _control_change = None
+
+    counter, events = model_events(MyCounter)
+
+    counter.increment(1)
+
+    assert events == []

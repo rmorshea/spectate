@@ -5,6 +5,9 @@ from typing import Union, Callable, Optional
 
 from spectate.core import Watchable, watched, Data, MethodSpectator
 
+from .utils import members
+
+
 __all__ = ["Model", "Control", "view", "unview", "views"]
 
 
@@ -169,10 +172,6 @@ class Control:
             raise RuntimeError(msg % (self.name, name))
         else:
             self.name = name
-        if isinstance(self._after, str):
-            self._after = getattr(cls, self._after)
-        if isinstance(self._before, str):
-            self._before = getattr(cls, self._before)
         for m in self.methods:
             setattr(cls, m, MethodSpectator(getattr(cls, m), m))
 
@@ -181,6 +180,7 @@ class BoundControl:
     def __init__(self, obj, ctrl):
         self._obj = obj
         self._cls = type(obj)
+        self._name = ctrl.name
         self._before = ctrl._before
         self._after = ctrl._after
         self.methods = ctrl.methods
@@ -188,11 +188,18 @@ class BoundControl:
     @property
     def before(self):
         if self._before is None:
-            return None
-        if hasattr(self._after, "__get__"):
-            before = self._before.__get__(self._obj, self._cls)
+            method_name = self._name + "_before"
+            if hasattr(self._obj, method_name):
+                before = getattr(self._obj, method_name)
+            else:
+                return None
         else:
             before = self._before
+
+        if isinstance(before, str):
+            before = getattr(self._obj, before)
+        elif hasattr(before, "__get__"):
+            before = before.__get__(self._obj, type(self._obj))
 
         @wraps(before)
         def beforeback(value, call):
@@ -217,11 +224,14 @@ class BoundControl:
     @property
     def after(self):
         if self._after is None:
-            return self._after
-        if hasattr(self._after, "__get__"):
-            after = self._after.__get__(self._obj, self._cls)
+            return None
         else:
             after = self._after
+
+        if isinstance(after, str):
+            after = getattr(self._obj, after)
+        elif hasattr(after, "__get__"):
+            after = after.__get__(self._obj, type(self._obj))
 
         @wraps(after)
         def afterback(value, answer):
@@ -284,9 +294,11 @@ class Model(Watchable):
     _model_controls = ()
 
     def __init_subclass__(cls, **kwargs):
-        for k, v in list(cls.__dict__.items()):
+        controls = []
+        for k, v in members(cls):
             if isinstance(v, Control):
-                cls._model_controls += (k,)
+                controls.append(k)
+        cls._model_controls = tuple(controls)
         super().__init_subclass__(**kwargs)
 
     def __new__(cls, *args, **kwargs):

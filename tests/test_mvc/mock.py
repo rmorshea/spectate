@@ -28,15 +28,14 @@ class Counter(mvc.Model):
     def decrement(self, amount):
         self.value -= amount
 
-    # define a beforeback for increment and decrement
-    _control_change = mvc.Control("increment", "decrement")
+    _control_change = (
+        mvc.Control("increment", "decrement")
+        .before("_control_before_change")
+        .after("_control_after_change")
+    )
 
-    @_control_change.before
-    def _control_change(self, call, notify):
+    def _control_before_change(self, call, notify):
         return self.value
 
-    # create the corresponding afterback
-    @_control_change.after
-    def _control_change(self, answer, notify):
-        # Send an "event" dictionary to the Counter's views.
+    def _control_after_change(self, answer, notify):
         notify(old=answer.before, new=self.value)

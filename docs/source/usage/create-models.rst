@@ -295,10 +295,14 @@ Have a signature of ``(call, notify) -> before``
 Model Afterbacks
 ----------------
 
-Have a signature of ``(instance, answer)``
+Have a signature of ``(answer, notify)``
 
-+ ``instance`` is the owner of the method
 + ``answer`` is a ``dict`` with the keys
+
     + ``'name'`` - the name of the method which was called
+
     + ``'value'`` - the value returned by the method
+
     + ``'before'`` - the value returned by the respective beforeback
+
++ ``notify`` is a function which will distribute an event to :func:`views <spectate.mvc.base.view>`
