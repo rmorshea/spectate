@@ -79,7 +79,7 @@ Rolling Back Events
 -------------------
 
 When an error occurs while modifying a model you may not want to distribute events.
-Using :func:`~sapy.mvc.events.rollback` you can suppress events that were produced
+Using :func:`~spectate.mvc.events.rollback` you can suppress events that were produced
 in the same context as an error:
 
 .. code-block:: python
@@ -104,7 +104,7 @@ in the same context as an error:
 Rolling Back Changes
 ''''''''''''''''''''
 
-Suppressing events after an error may not be enough. You can pass :func:`~sapy.mvc.events.rollback`
+Suppressing events after an error may not be enough. You can pass :func:`~spectate.mvc.events.rollback`
 an ``undo`` function which gives you a chances to analyze the events in order to determine
 and then return a model to its original state. Any events that you might produce while
 modifying a model within the ``undo`` function will be :ref:`muted <Muting Events>`.
