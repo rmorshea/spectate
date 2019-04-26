@@ -1,5 +1,6 @@
 # See End Of File For Licensing
 
+import functools
 import inspect
 import itertools
 
@@ -7,7 +8,7 @@ from .utils import Sentinel
 from .base import Model, Control
 
 
-__all__ = ["List", "Dict", "Set", "Object", "Undefined"]
+__all__ = ["List", "Dict", "Set", "Object", "Oracle", "Undefined"]
 
 
 Undefined = Sentinel("Undefined")
@@ -263,6 +264,64 @@ class Object(Model):
         new = getattr(self, attr, Undefined)
         if new != old:
             notify(attr=attr, old=old, new=new)
+
+
+class MetaOracle(type):
+
+    def __init__(self, name, bases, attrs):
+        if "_model_capture_types" in attrs:
+            class_to_key = functools.cmp_to_key(lambda t1, t2: -1 if issubclass(t1, t2) else 1)
+            class_key_from_item = lambda i: class_to_key(i[1])
+            self._model_capture_order = tuple(sorted(self._model_capture_types.items(), key=class_key_from_item))
+
+
+class Oracle(Object, metaclass=MetaOracle):
+
+    _model_capture_types = {
+        "_capture_dict": Dict,
+        "_capture_object": Object,
+        "_capture_list": List,
+    }
+
+    def __init__(self, *args, **kwargs):
+        self.__dict__.update(*args, **kwargs)
+
+    def _capture_model_events(self, model):
+        mvc.view(model)(self._capture)
+
+    def _capture(self, value, events):
+        for method, model_type in self._model_capture_order:
+            if isinstance(value, model_type):
+                super()._notify_model_views(tuple(
+                    getattr(self, method)(value, e)
+                    for e in events
+                ))
+                break
+        else:
+            raise TypeError("Oracle is unable to capture type %r" % value)
+
+    def _capture_object(self, value, event):
+        if isinstance(event.new, Model):
+            self._capture_model_events(event.new)
+        return event
+
+    def _capture_dict(self, value, event):
+        if isinstance(event.new, Model):
+            self._capture_model_events(event.new)
+        return event
+
+    def _capture_list(self, value, event):
+        if isinstance(event.new, Model):
+            self._capture_model_events(event.new)
+        return event
+
+    def _capture_set(self, value, event):
+        # We don't need to capture the contents of a set because
+        # anything stored in it must be hashable and thus not mutable
+        return event
+
+    def _notify_model_views(self, events):
+        self._capture(self, events)
 
 
 # The MIT License (MIT)
