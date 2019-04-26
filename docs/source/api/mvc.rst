@@ -1,6 +1,9 @@
 Model View Controller
 =====================
 
+.. automodule:: spectate.mvc
+    :members:
+
 .. automodule:: spectate.mvc.models
     :members:
 

@@ -16,9 +16,29 @@ https://python-spectate.readthedocs.io/en/latest/
 
 # Install
 
-+ stable : `pip install spectate`
-+ master : `pip install git+https://github.com/rmorshea/spectate.git#egg=spectate`
-+ developer : `git clone https://github.com/rmorshea/spectate && cd spectate/ && pip install -e . -r requirements.txt`
++ stable
+
+```bash
+pip install spectate
+```
+
++ pre-release
+
+```bash
+pip install spectate --pre
+```
+
++ master
+
+```bash
+pip install git+https://github.com/rmorshea/spectate.git#egg=spectate
+```
+
++ developer
+
+```bash
+git clone https://github.com/rmorshea/spectate && cd spectate/ && pip install -e . -r requirements.txt
+```
 
 
 # At A Glance

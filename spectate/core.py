@@ -191,7 +191,10 @@ class MethodSpectator(object):
 
     def __init__(self, basemethod, name):
         if not callable(basemethod):
-            raise TypeError("Expected a callable, not %r" % basemethod)
+            if isinstance(basemethod, MethodSpectator):
+                basemethod = basemethod.basemethod
+            else:
+                raise TypeError("Expected a callable, not %r" % basemethod)
         self.basemethod = basemethod
         self.name = name
 

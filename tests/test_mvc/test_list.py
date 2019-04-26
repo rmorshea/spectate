@@ -73,6 +73,17 @@ _method_call_and_expected_event = [
         ],
     },
     {
+        "value": [],
+        "method": "extend",
+        "args": [(i for i in range(1, 4))],
+        "kwargs": {},
+        "events": [
+            {"old": undef, "new": 1, "index": 0},
+            {"old": undef, "new": 2, "index": 1},
+            {"old": undef, "new": 3, "index": 2},
+        ],
+    },
+    {
         "value": [1, 2, 3],
         "method": "clear",
         "args": [],
