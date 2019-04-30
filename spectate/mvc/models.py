@@ -5,7 +5,7 @@ import inspect
 import itertools
 
 from .utils import Sentinel
-from .base import Model, Control
+from .base import Model, Control, view
 
 
 __all__ = ["List", "Dict", "Set", "Object", "Oracle", "Undefined"]
