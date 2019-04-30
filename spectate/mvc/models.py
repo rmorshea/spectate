@@ -270,9 +270,15 @@ class MetaOracle(type):
 
     def __init__(self, name, bases, attrs):
         if "_model_capture_types" in attrs:
-            class_to_key = functools.cmp_to_key(lambda t1, t2: -1 if issubclass(t1, t2) else 1)
-            class_key_from_item = lambda i: class_to_key(i[1])
-            self._model_capture_order = tuple(sorted(self._model_capture_types.items(), key=class_key_from_item))
+            class_to_key = functools.cmp_to_key(
+                lambda t1, t2: -1 if issubclass(t1, t2) else 1
+            )
+            self._model_capture_order = tuple(
+                sorted(
+                    self._model_capture_types.items(),
+                    key=lambda i: class_to_key(i[1])
+                )
+            )
 
 
 class Oracle(Object, metaclass=MetaOracle):
@@ -287,7 +293,7 @@ class Oracle(Object, metaclass=MetaOracle):
         self.__dict__.update(*args, **kwargs)
 
     def _capture_model_events(self, model):
-        mvc.view(model)(self._capture)
+        view(model)(self._capture)
 
     def _capture(self, value, events):
         for method, model_type in self._model_capture_order:
