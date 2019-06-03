@@ -204,7 +204,6 @@ class Dict(Model, dict):
     def _control_after_update(self, answer, notify):
         for k, v in answer.before.items():
             if self[k] != v:
-                print(k, v)
                 notify(key=k, old=v, new=self[k])
 
     def _control_before_clear(self, call, notify):
