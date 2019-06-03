@@ -266,68 +266,31 @@ class Object(Model):
             notify(attr=attr, old=old, new=new)
 
 
-class MetaOracle(type):
-
-    def __init__(self, name, bases, attrs):
-        if "_model_capture_types" in attrs:
-            class_to_key = functools.cmp_to_key(
-                lambda t1, t2: -1 if issubclass(t1, t2) else 1
-            )
-            self._model_capture_order = tuple(
-                sorted(
-                    self._model_capture_types.items(),
-                    key=lambda i: class_to_key(i[1])
-                )
-            )
-
-
-class Oracle(Object, metaclass=MetaOracle):
-
-    _model_capture_types = {
-        "_capture_dict": Dict,
-        "_capture_object": Object,
-        "_capture_list": List,
-    }
+class Oracle(Object):
 
     def __init__(self, *args, **kwargs):
-        self.__dict__.update(*args, **kwargs)
-
-    def _capture_model_events(self, model):
-        view(model)(self._capture)
-
-    def _capture(self, value, events):
-        for method, model_type in self._model_capture_order:
-            if isinstance(value, model_type):
-                super()._notify_model_views(tuple(
-                    getattr(self, method)(value, e)
-                    for e in events
-                ))
-                break
-        else:
-            raise TypeError("Oracle is unable to capture type %r" % value)
-
-    def _capture_object(self, value, event):
-        if isinstance(event.new, Model):
-            self._capture_model_events(event.new)
-        return event
-
-    def _capture_dict(self, value, event):
-        if isinstance(event.new, Model):
-            self._capture_model_events(event.new)
-        return event
-
-    def _capture_list(self, value, event):
-        if isinstance(event.new, Model):
-            self._capture_model_events(event.new)
-        return event
-
-    def _capture_set(self, value, event):
-        # We don't need to capture the contents of a set because
-        # anything stored in it must be hashable and thus not mutable
-        return event
+        for k, v in dict(*args, **kwargs).items():
+            setattr(self, k, v)
+        self.__dict__["_oracle_path_"] = ()
 
     def _notify_model_views(self, events):
         self._capture(self, events)
+
+    def _capture(self, value, events):
+        for e in events:
+            if isinstance(e.new, Model):
+                view(e.new, self._capture)
+                for key in [e[k] for k in ("attr", "key", "index") if k in e]:
+                    new_path = value._oracle_path_ + (e[key],)
+                    e.new.__dict__["_oracle_path_"] = new_path
+                    break
+            if isinstance(e.old, Model):
+                unview(e.old, self._capture)
+                del e.old.__dict__["_oracle_path_"]
+        events = tuple(e["path": value._oracle_path_] for e in events)
+        # send off the events to views
+        for v in self._model_views:
+            v(value, events)
 
 
 # The MIT License (MIT)
