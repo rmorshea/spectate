@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import Iterator, Callable, Optional
 
-from spectate import Data
+from spectate import Immutable
 
 from .base import Model
 
@@ -71,7 +71,7 @@ def hold(model: Model, reducer: Optional[Callable] = None) -> Iterator[list]:
         events = tuple(events)
 
         if reducer is not None:
-            events = tuple(map(Data, reducer(model, events)))
+            events = tuple(map(Immutable, reducer(model, events)))
 
         model._notify_model_views(events)
 

@@ -11,7 +11,7 @@ from spectate.core import (
     Watchable,
     MethodSpectator,
     Spectator,
-    Data,
+    Immutable,
 )
 
 try:
@@ -118,10 +118,10 @@ def test_method_spectator_signature():
 def check_answer(checklist, inst, name, a, b, c=None, d=None, *e, **f):
     args, kwargs = condense(a, b, c, d, *e, **f)
     checklist.append(
-        Data(
+        Immutable(
             name=name,
             value=(inst, a, b, c, d, e, f),
-            before=Data(name=name, args=args, kwargs=kwargs),
+            before=Immutable(name=name, args=args, kwargs=kwargs),
         )
     )
     getattr(inst, name)(a, b, c, d, *e, **f)
@@ -172,7 +172,7 @@ def test_callback_closure():
 
         def closure(value):
             callbacks_called[1] += 1
-            assert checklist[-1] == Data(name=call.name, value=value, before=call)
+            assert checklist[-1] == Immutable(name=call.name, value=value, before=call)
 
         return closure
 
@@ -227,7 +227,7 @@ if not sys.version_info < (3, 6):
 
 
 def test_data_is_immutable():
-    d = Data(a=0)
+    d = Immutable(a=0)
     with raises(TypeError):
         d["a"] = 1
     with raises(TypeError):
@@ -239,20 +239,17 @@ def test_data_is_immutable():
     assert d == {"a": 0}
 
 
-def test_data_evolution():
-    d0 = Data(a=0)
-    d1 = d0["b":1]
-    assert d1 == {"a": 0, "b": 1}
-    d2 = d1["b":2, "c":3]
-    assert d2 == {"a": 0, "b": 2, "c": 3}
-    d3 = d2[{"b": 3, "c": 4}]
-    assert d3 == {"a": 0, "b": 3, "c": 4}
-
-    d0 = Data()
-    d1 = d0[{"a": 1}, {"b": 2}]
-    assert d1 == {"a": 1, "b": 2}
+def test_can_add_immutables():
+    d0 = Immutable()
+    d1 = d0 + {"a": 1}
+    d2 = d1 + {"b": 2}
+    d3 = d2 + {"a": 10, "b": 20}
+    assert d1 == {"a": 1}
+    assert d2 == {"a": 1, "b": 2}
+    assert d3 == {"a": 10, "b": 20}
 
 
 def test_data_is_mapping():
-    assert dict(Data(a=0, b=1)) == {"a": 0, "b": 1}
-    assert dict(**Data(a=0, b=1)) == {"a": 0, "b": 1}
+    assert Immutable(a=0, b=1) == {"a": 0, "b": 1}
+    assert dict(Immutable(a=0, b=1)) == {"a": 0, "b": 1}
+    assert dict(**Immutable(a=0, b=1)) == {"a": 0, "b": 1}

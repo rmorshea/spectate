@@ -1,9 +1,10 @@
 # See End Of File For Licensing
 from inspect import signature
-from functools import wraps
+from functools import wraps, partial
 from typing import Union, Callable, Optional
+from weakref import ref
 
-from spectate.core import Watchable, watched, Data, MethodSpectator
+from spectate.core import Watchable, watched, Immutable, MethodSpectator
 
 from .utils import members
 
@@ -45,7 +46,7 @@ def view(model: "Model", *functions: Callable) -> Optional[Callable]:
         raise TypeError("Expected a Model, not %r." % model)
 
     def setup(function: Callable):
-        model._model_views.append(function)
+        model._model_views.append(View(model, function))
         return function
 
     if functions:
@@ -66,6 +67,43 @@ def unview(model: "Model", function: Callable):
         ValueError: If the given ``function`` is not a view of the given ``model``.
     """
     model._model_views.remove(function)
+
+
+class View:
+    def __init__(self, value, callback):
+        self._value = ref(value)
+        self._callback = callback
+        self._inner_views = {}
+
+    @property
+    def value(self):
+        return self._value()
+
+    def __call__(self, value, events):
+        for evt in events:
+            # register the callback to the inner model
+            if "new" in evt and isinstance(evt.new, Model):
+                self._view_inner(evt.new)
+            # remove the callback from the inner model
+            if "old" in evt and isinstance(evt.old, Model):
+                self._unview_inner(evt.old)
+        return self._callback(self.value, events)
+
+    def _view_inner(self, inner):
+        inner_view = View(inner, self._callback)
+        self._inner_views[id(inner)] = inner_view
+        inner._model_views.append(inner_view)
+
+    def _unview_inner(self, inner):
+        self._inner_views[id(inner)].remove()
+
+    def remove(self):
+        self.value._model_views.remove(self)
+        for v in self._inner_views.values():
+            v.remove()
+
+    def __repr__(self):
+        return f"{type(self).__name__}({repr(self.value)})"
 
 
 class Control:
@@ -206,15 +244,14 @@ class BoundControl:
             events = []
 
             def notify(**event):
-                events.append(Data(event))
+                events.append(Immutable(event))
 
             def parameters():
                 meth = getattr(value, call.name)
                 bound = signature(meth).bind(*call.args, **call.kwargs)
                 return dict(bound.arguments)
 
-            call = call["parameters":parameters]
-            result = before(call, notify)
+            result = before(call + {"parameters": parameters}, notify)
             if events:
                 self._obj._notify_model_views(tuple(events))
             return result
@@ -238,7 +275,7 @@ class BoundControl:
             events = []
 
             def notify(**event):
-                events.append(Data(event))
+                events.append(Immutable(event))
 
             result = after(answer, notify)
             if events:

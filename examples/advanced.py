@@ -2,7 +2,7 @@ from spectate import expose, watch
 
 
 @expose("__setattr__", "__delattr__")
-class Data(object):
+class Immutable(object):
     def __init__(self):
         self._callbacks = []
         spectator = watch(self)
@@ -27,7 +27,7 @@ class Data(object):
         return function
 
 
-class User(Data):
+class User(Immutable):
     def __init__(self, name, description):
         super(User, self).__init__()
         self.name = name

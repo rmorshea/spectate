@@ -2,7 +2,7 @@
 
 import sys
 import inspect
-import collections
+from collections import Mapping
 from functools import wraps
 
 try:
@@ -19,7 +19,7 @@ __all__ = [
     "watcher",
     "watchable",
     "Watchable",
-    "Data",
+    "Immutable",
 ]
 
 
@@ -85,13 +85,13 @@ class Spectator(object):
         before: None or callable
             A callable of the form ``before(obj, call)`` where ``obj`` is
             the instance which called a watched method, and ``call`` is a
-            :class:`Data` containing the name of the called method, along with
+            :class:`Immutable` containing the name of the called method, along with
             its positional and keyword arguments under the attributes "name"
             "args", and "kwargs" respectively.
         after: None or callable
             A callable of the form ``after(obj, answer)`` where ``obj` is
             the instance which alled a watched method, and ``answer`` is a
-            :class:`Data` containing the name of the called method, along with
+            :class:`Immutable` containing the name of the called method, along with
             the value it returned, and data ``before`` may have returned
             under the attributes "name", "value", and "before" respectively.
         """
@@ -166,7 +166,7 @@ class Spectator(object):
             hold = []
             for b in beforebacks:
                 if b is not None:
-                    call = Data(name=name, kwargs=kwargs.copy(), args=args)
+                    call = Immutable(name=name, kwargs=kwargs.copy(), args=args)
                     v = b(obj, call)
                 else:
                     v = None
@@ -176,7 +176,7 @@ class Spectator(object):
 
             for a, bval in zip(afterbacks, hold):
                 if a is not None:
-                    a(obj, Data(before=bval, name=name, value=out))
+                    a(obj, Immutable(before=bval, name=name, value=out))
                 elif callable(bval):
                     # the beforeback's return value was an
                     # afterback that expects to be called
@@ -378,67 +378,52 @@ def watcher(value):
     return getattr(value, "_instance_spectator", None)
 
 
-class Data(collections.Mapping):
+class Immutable(Mapping):
     """An immutable mapping with attribute-access.
 
     Empty keys are represented with a value of ``None``.
 
-    In order to evolve :class:`Data`, users must create copies that
+    In order to evolve :class:`Immutable`, users must create copies that
     contain updates:
 
     .. code-block:: python
 
-        d1 = Data(a=1)
-        d2 = Data(b=2)
-        assert Data(d1, **d2) == {'a': 1, 'b': 2}
+        d1 = Immutable(a=1)
+        d2 = {'b': 1}
+        assert Immutable(d1, **d2) == {'a': 1, 'b': 2}
 
-    Easing this fact, is :class:`Data`'s syntactic sugar:
+    Easing this fact, is :class:`Immutable`'s syntactic sugar:
 
     .. code-block:: python
 
-        d1 = Data(a=1)
-        assert d1 == {'a': 1}
-
-        d2 = d1['b': 2]
-        assert d2 == {'a': 1, 'b': 2}
-
-        d3 = d2['a': None, 'b': 1]
-        assert d3 == {'b': 1}
-
-        d4 = d3[{'a': 1, 'c': 3}, {'b': None}]
-        assert d4 == {'a': 1, 'c': 3}
+        d1 = Immutable(a=1) + {'b': 2}
+        assert d1 == {'a': 1, 'b': 2}
     """
 
     def __init__(self, *args, **kwargs):
-        self.__dict__.update(*args, **kwargs)
+        self.__data = dict(*args, **kwargs)
+        self.__keys = tuple(self.__data.keys())
 
-    def __getattr__(self, key):
-        return None
+    def __add__(self, other):
+        return Immutable(self, **other)
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            raise AttributeError(name)
 
     def __getitem__(self, key):
-        if type(key) is slice:
-            key = (key,)
-        if type(key) is tuple:
-            for x in key:
-                if not isinstance(x, slice):
-                    break
-            else:
-                new = {s.start: s.stop for s in key}
-                return type(self)(self, **new)
-            merge = {}
-            for x in key:
-                if isinstance(x, collections.Mapping):
-                    merge.update(x)
-            key = merge
-        if isinstance(key, collections.Mapping):
-            return type(self)(self, **key)
-        return self.__dict__.get(key)
+        return self.__data[key]
 
     def __setitem__(self, key, value):
         raise TypeError("%r is immutable")
 
     def __setattr__(self, key, value):
-        raise TypeError("%r is immutable")
+        if key.startswith("_%s" % type(self).__name__):
+            super().__setattr__(key, value)
+        else:
+            raise TypeError("%r is immutable")
 
     def __delitem__(self, key):
         raise TypeError("%r is immutable")
@@ -450,13 +435,16 @@ class Data(collections.Mapping):
         return key in tuple(self)
 
     def __iter__(self):
-        return iter(self.__dict__)
+        return iter(self.__data)
 
     def __len__(self):
-        return len(self.__dict__)
+        return len(self.__data)
 
     def __repr__(self):
-        return repr(self.__dict__)
+        return repr(self.__data)
+
+    def __hash__(self):
+        return hash(tuple((k, self[k]) for k in self.__keys))
 
 
 # The MIT License (MIT)
