@@ -4,7 +4,7 @@ import inspect
 import itertools
 
 from .utils import Sentinel
-from .base import Model, Control
+from .base import Structure, Control
 
 
 __all__ = ["List", "Dict", "Set", "Object", "Undefined"]
@@ -13,7 +13,7 @@ __all__ = ["List", "Dict", "Set", "Object", "Undefined"]
 Undefined = Sentinel("Undefined")
 
 
-class List(Model, list):
+class List(Structure, list):
     """A :mod:`spectate.mvc` enabled ``list``."""
 
     _control_setitem = Control(
@@ -31,7 +31,9 @@ class List(Model, list):
     _control_append = Control("append", after="_control_after_append")
 
     _control_extend = Control(
-        "extend", before="_control_before_extend", after="_control_after_extend"
+        "__init__, extend",
+        before="_control_before_extend",
+        after="_control_after_extend",
     )
 
     _control_pop = Control(
@@ -47,7 +49,7 @@ class List(Model, list):
     )
 
     _control_rearrangement = Control(
-        ["sort", "reverse"],
+        "sort, reverse",
         before="_control_before_rearrangement",
         after="_control_after_rearrangement",
     )
@@ -130,23 +132,25 @@ class List(Model, list):
                 notify(index=i, old=v, new=self[i])
 
 
-class Dict(Model, dict):
+class Dict(Structure, dict):
     """A :mod:`spectate.mvc` enabled ``dict``."""
 
     _control_setitem = Control(
-        ["__setitem__", "setdefault"],
+        "__setitem__, setdefault",
         before="_control_before_setitem",
         after="_control_after_setitem",
     )
 
     _control_delitem = Control(
-        ["__delitem__", "pop"],
+        "__delitem__, pop",
         before="_control_before_delitem",
         after="_control_after_delitem",
     )
 
     _control_update = Control(
-        "update", before="_control_before_update", after="_control_after_update"
+        "__init__, update",
+        before="_control_before_update",
+        after="_control_after_update",
     )
 
     _control_clear = Control(
@@ -202,11 +206,12 @@ class Dict(Model, dict):
             notify(key=k, old=v, new=Undefined)
 
 
-class Set(Model, set):
+class Set(Structure, set):
     """A :mod:`spectate.mvc` enabled ``set``."""
 
     _control_update = Control(
         [
+            "__init__",
             "clear",
             "update",
             "difference_update",
@@ -231,17 +236,18 @@ class Set(Model, set):
             notify(new=new, old=old)
 
 
-class Object(Model):
+class Object(Structure):
     """A :mod:`spectat.mvc` enabled ``object``."""
 
     _control_attr_change = Control(
-        ["__setattr__", "__delattr__"],
+        "__setattr__, __delattr__",
         before="_control_before_attr_change",
         after="_control_after_attr_change",
     )
 
     def __init__(self, *args, **kwargs):
-        self.__dict__.update(*args, **kwargs)
+        for k, v in dict(*args, **kwargs).items():
+            setattr(self, k, v)
 
     def _control_before_attr_change(self, call, notify):
         return call.args[0], getattr(self, call.args[0], Undefined)

@@ -2,14 +2,14 @@
 from inspect import signature
 from functools import wraps, partial
 from typing import Union, Callable, Optional
-from weakref import ref
+from weakref import WeakValueDictionary
 
 from spectate.core import Watchable, watched, Immutable, MethodSpectator
 
 from .utils import members
 
 
-__all__ = ["Model", "Control", "view", "unview", "views"]
+__all__ = ["Model", "Structure", "Control", "view", "unview", "views"]
 
 
 def views(model: "Model") -> list:
@@ -46,7 +46,7 @@ def view(model: "Model", *functions: Callable) -> Optional[Callable]:
         raise TypeError("Expected a Model, not %r." % model)
 
     def setup(function: Callable):
-        model._model_views.append(View(model, function))
+        model._attach_model_view(function)
         return function
 
     if functions:
@@ -59,6 +59,7 @@ def view(model: "Model", *functions: Callable) -> Optional[Callable]:
 def unview(model: "Model", function: Callable):
     """Remove a view callbcak from a model.
 
+                target._notify_model_views(tuple(function(value, events)))
     Parameters:
         model: The model which contains the view function.
         function: The callable which was registered to the model as a view.
@@ -66,44 +67,7 @@ def unview(model: "Model", function: Callable):
     Raises:
         ValueError: If the given ``function`` is not a view of the given ``model``.
     """
-    model._model_views.remove(function)
-
-
-class View:
-    def __init__(self, value, callback):
-        self._value = ref(value)
-        self._callback = callback
-        self._inner_views = {}
-
-    @property
-    def value(self):
-        return self._value()
-
-    def __call__(self, value, events):
-        for evt in events:
-            # register the callback to the inner model
-            if "new" in evt and isinstance(evt.new, Model):
-                self._view_inner(evt.new)
-            # remove the callback from the inner model
-            if "old" in evt and isinstance(evt.old, Model):
-                self._unview_inner(evt.old)
-        return self._callback(self.value, events)
-
-    def _view_inner(self, inner):
-        inner_view = View(inner, self._callback)
-        self._inner_views[id(inner)] = inner_view
-        inner._model_views.append(inner_view)
-
-    def _unview_inner(self, inner):
-        self._inner_views[id(inner)].remove()
-
-    def remove(self):
-        self.value._model_views.remove(self)
-        for v in self._inner_views.values():
-            v.remove()
-
-    def __repr__(self):
-        return f"{type(self).__name__}({repr(self.value)})"
+    model._remove_model_view(function)
 
 
 class Control:
@@ -113,6 +77,7 @@ class Control:
     called. For example there is a control method on the
     :class:`~spectate.mvc.models.List`
     which responds when :meth:`~spectate.mvc.models.List.append` is called.
+                target._notify_model_views(tuple(function(value, events)))
 
     A control method is a slightly modified :ref:`beforeback <Spectator Beforebacks>` or
     :ref:`afterback <Spectator Afterbacks>` that accepts an extra ``notify`` argument.
@@ -124,7 +89,8 @@ class Control:
     Parameters:
         methods:
             The names of the methods on the model which this control will react to
-            When they are called.
+            When they are calthrough the Nodeled. This is either a comma seperated string,
+            or a list of strings.
         before:
             A control method that reacts before any of the given ``methods`` are
             called. If given as a callable, then that function will be used as the
@@ -294,16 +260,22 @@ class Model(Watchable):
 
             from specate import mvc
 
-            class Object(mvc.Model):
+            class Object(Model):
 
-                _control_attr_change = mvc.Control('__setattr__', '__delattr__')
+                _control_attr_change = Control(
+                    "__setattr__, __delattr__",
+                    before="_control_before_attr_change",
+                    after="_control_after_attr_change",
+                )
 
-                @_control_attr_change.before
-                def _control_attr_change(self, call, notify):
+                def __init__(self, *args, **kwargs):
+                    for k, v in dict(*args, **kwargs).items():
+                        setattr(self, k, v)
+
+                def _control_before_attr_change(self, call, notify):
                     return call.args[0], getattr(self, call.args[0], Undefined)
 
-                @_control_attr_change.after
-                def _control_attr_change(self, answer, notify):
+                def _control_after_attr_change(self, answer, notify):
                     attr, old = answer.before
                     new = getattr(self, attr, Undefined)
                     if new != old:
@@ -344,9 +316,57 @@ class Model(Watchable):
         object.__setattr__(self, "_model_views", [])
         return self
 
+    def _attach_model_view(self, function):
+        self._model_views.append(function)
+
+    def _remove_model_view(self, function):
+        self._model_views.remove(function)
+
     def _notify_model_views(self, events):
         for view in self._model_views:
-            view(self, events)
+            view(self, tuple(events))
+
+
+class Structure(Model):
+    def __new__(cls, *args, **kwargs):
+        self = super().__new__(cls)
+        object.__setattr__(self, "_inner_models", WeakValueDictionary())
+        return self
+
+    def _attach_model_view(self, function):
+        super()._attach_model_view(function)
+        for inner in self._inner_models.values():
+            inner._attach_model_view(function)
+
+    def _remove_model_view(self, function):
+        super()._remove_model_view(function)
+        for inner in self._inner_models.values():
+            inner._remove_model_view(function)
+
+    def _attach_inner_model(self, model):
+        self._inner_models[id(model)] = model
+        for v in self._model_views:
+            model._attach_model_view(v)
+
+    def _remove_inner_model(self, model):
+        try:
+            del self._inner_models[id(model)]
+        except KeyError:
+            pass
+        else:
+            for v in self._model_views:
+                model._remove_model_view(v)
+
+    def _capture_inner_event(self, event):
+        if "new" in event and isinstance(event.new, Model):
+            self._attach_inner_model(event.new)
+        if "old" in event and isinstance(event.old, Model):
+            self._remove_inner_model(event.old)
+
+    def _notify_model_views(self, events):
+        for evt in events:
+            self._capture_inner_event(evt)
+        super()._notify_model_views(events)
 
 
 # The MIT License (MIT)

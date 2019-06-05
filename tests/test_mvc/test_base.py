@@ -112,9 +112,8 @@ def test_delete_controls_in_subclass():
     assert events == []
 
 
-def test_auto_capture_inner_models():
-    class Container(mvc.Model):
-
+def test_structure_events():
+    class Container(mvc.Structure):
         def __init__(self, name):
             self.name = name
             self.value = None
@@ -122,7 +121,9 @@ def test_auto_capture_inner_models():
         def set(self, value):
             self.value = value
 
-        _control_changes = mvc.Control("set", before="_before_change", after="_after_change")
+        _control_changes = mvc.Control(
+            "set", before="_before_change", after="_after_change"
+        )
 
         def _before_change(self, call, notify):
             return self.value
@@ -156,8 +157,8 @@ def test_auto_capture_inner_models():
     assert calls == [s0]
     calls.clear()
 
-    # these should not trigger events because they are no longer attached
-    # to the root container s0
+    # these should not trigger events because they are no longer
+    # attached to the root container s0
     s1.set(None)
     s2.set(None)
 
