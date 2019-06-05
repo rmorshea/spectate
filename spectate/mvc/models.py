@@ -16,50 +16,40 @@ Undefined = Sentinel("Undefined")
 class List(Model, list):
     """A :mod:`spectate.mvc` enabled ``list``."""
 
-    _control_setitem = (
-        Control("__setitem__")
-        .before("_control_before_setitem")
-        .after("_control_after_setitem")
+    _control_setitem = Control(
+        "__setitem__", before="_control_before_setitem", after="_control_after_setitem"
     )
 
-    _control_delitem = (
-        Control("__delitem__")
-        .before("_control_before_delitem")
-        .after("_control_after_delitem")
+    _control_delitem = Control(
+        "__delitem__", before="_control_before_delitem", after="_control_after_delitem"
     )
 
-    _control_insert = (
-        Control("insert")
-        .before("_control_before_insert")
-        .after("_control_after_insert")
+    _control_insert = Control(
+        "insert", before="_control_before_insert", after="_control_after_insert"
     )
 
-    _control_append = Control("append").after("_control_after_append")
+    _control_append = Control("append", after="_control_after_append")
 
-    _control_extend = (
-        Control("extend")
-        .before("_control_before_extend")
-        .after("_control_after_extend")
+    _control_extend = Control(
+        "extend", before="_control_before_extend", after="_control_after_extend"
     )
 
-    _control_pop = (
-        Control("pop").before("_control_before_pop").after("_control_after_delitem")
+    _control_pop = Control(
+        "pop", before="_control_before_pop", after="_control_after_delitem"
     )
 
-    _control_clear = (
-        Control("clear").before("_control_before_clear").after("_control_after_clear")
+    _control_clear = Control(
+        "clear", before="_control_before_clear", after="_control_after_clear"
     )
 
-    _control_remove = (
-        Control("remove")
-        .before("_control_before_remove")
-        .after("_control_after_delitem")
+    _control_remove = Control(
+        "remove", before="_control_before_remove", after="_control_after_delitem"
     )
 
-    _control_rearrangement = (
-        Control("sort", "reverse")
-        .before("_control_before_rearrangement")
-        .after("_control_after_rearrangement")
+    _control_rearrangement = Control(
+        ["sort", "reverse"],
+        before="_control_before_rearrangement",
+        after="_control_after_rearrangement",
     )
 
     def _control_before_setitem(self, call, notify):
@@ -143,26 +133,24 @@ class List(Model, list):
 class Dict(Model, dict):
     """A :mod:`spectate.mvc` enabled ``dict``."""
 
-    _control_setitem = (
-        Control("__setitem__", "setdefault")
-        .before("_control_before_setitem")
-        .after("_control_after_setitem")
+    _control_setitem = Control(
+        ["__setitem__", "setdefault"],
+        before="_control_before_setitem",
+        after="_control_after_setitem",
     )
 
-    _control_delitem = (
-        Control("__delitem__", "pop")
-        .before("_control_before_delitem")
-        .after("_control_after_delitem")
+    _control_delitem = Control(
+        ["__delitem__", "pop"],
+        before="_control_before_delitem",
+        after="_control_after_delitem",
     )
 
-    _control_update = (
-        Control("update")
-        .before("_control_before_update")
-        .after("_control_after_update")
+    _control_update = Control(
+        "update", before="_control_before_update", after="_control_after_update"
     )
 
-    _control_clear = (
-        Control("clear").before("_control_before_clear").after("_control_after_clear")
+    _control_clear = Control(
+        "clear", before="_control_before_clear", after="_control_after_clear"
     )
 
     def _control_before_setitem(self, call, notify):
@@ -217,8 +205,8 @@ class Dict(Model, dict):
 class Set(Model, set):
     """A :mod:`spectate.mvc` enabled ``set``."""
 
-    _control_update = (
-        Control(
+    _control_update = Control(
+        [
             "clear",
             "update",
             "difference_update",
@@ -228,9 +216,9 @@ class Set(Model, set):
             "remove",
             "symmetric_difference_update",
             "discard",
-        )
-        .before("_control_before_update")
-        .after("_control_after_update")
+        ],
+        before="_control_before_update",
+        after="_control_after_update",
     )
 
     def _control_before_update(self, call, notify):
@@ -246,10 +234,10 @@ class Set(Model, set):
 class Object(Model):
     """A :mod:`spectat.mvc` enabled ``object``."""
 
-    _control_attr_change = (
-        Control("__setattr__", "__delattr__")
-        .before("_control_before_attr_change")
-        .after("_control_after_attr_change")
+    _control_attr_change = Control(
+        ["__setattr__", "__delattr__"],
+        before="_control_before_attr_change",
+        after="_control_after_attr_change",
     )
 
     def __init__(self, *args, **kwargs):

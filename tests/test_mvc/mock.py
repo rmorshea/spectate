@@ -28,10 +28,10 @@ class Counter(mvc.Model):
     def decrement(self, amount):
         self.value -= amount
 
-    _control_change = (
-        mvc.Control("increment", "decrement")
-        .before("_control_before_change")
-        .after("_control_after_change")
+    _control_change = mvc.Control(
+        ["increment", "decrement"],
+        before="_control_before_change",
+        after="_control_after_change",
     )
 
     def _control_before_change(self, call, notify):

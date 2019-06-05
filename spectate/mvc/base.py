@@ -125,6 +125,16 @@ class Control:
         methods:
             The names of the methods on the model which this control will react to
             When they are called.
+        before:
+            A control method that reacts before any of the given ``methods`` are
+            called. If given as a callable, then that function will be used as the
+            callback. If given as a string, then the control will look up a method
+            with that name when reacting (useful when subclassing).
+        after:
+            A control method that reacts after any of the given ``methods`` are
+            alled. If given as a callable, then that function will be used as the
+            callback. If given as a string, then the control will look up a method
+            with that name when reacting (useful when subclassing).
 
     Examples:
         Control methods are registered to a :class:`Control` with a ``str`` or function.
@@ -162,45 +172,32 @@ class Control:
             after
     """
 
-    def __init__(self, *methods: str):
-        self.methods = methods
+    def __init__(
+        self,
+        methods: Union[list, tuple, str],
+        *,
+        before: Union[Callable, str] = None,
+        after: Union[Callable, str] = None,
+    ):
+        if isinstance(methods, (list, tuple)):
+            self.methods = tuple(methods)
+        elif isinstance(methods, str):
+            self.methods = tuple(map(str.strip, methods.split(",")))
+        else:
+            raise ValueError("methods must be a string of list of strings")
         self.name = None
+        if isinstance(before, Control):
+            before = before._before
+        self._before = before
+        if isinstance(after, Control):
+            after = after._after
+        self._after = after
 
     def __get__(self, obj, cls):
         if obj is None:
             return self
         else:
             return BoundControl(obj, self)
-
-    def before(self, callback: Union[Callable, str]) -> "Control":
-        """Register a control method that reacts before the trigger method is called.
-
-        Parameters:
-            callback:
-                The control method. If given as a callable, then that function will be
-                used as the callback. If given as a string, then the control will look
-                up a method with that name when reacting (useful when subclassing).
-        """
-        if isinstance(callback, Control):
-            callback = callback._before
-        self._before = callback
-        return self
-
-    def after(self, callback: Union[Callable, str]) -> "Control":
-        """Register a control method that reacts after the trigger method is called.
-
-        Parameters:
-            callback:
-                The control method. If given as a callable, then that function will be
-                used as the callback. If given as a string, then the control will look
-                up a method with that name when reacting (useful when subclassing).
-        """
-        if isinstance(callback, Control):
-            callback = callback._after
-        self._after = callback
-        return self
-
-    _after, _before = None, None
 
     def __set_name__(self, cls, name):
         if not issubclass(cls, Model):
