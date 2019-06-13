@@ -1,6 +1,6 @@
 # See End Of File For Licensing
 from inspect import signature
-from functools import wraps, partial
+from functools import wraps
 from typing import Union, Callable, Optional
 from contextlib import contextmanager
 from weakref import WeakValueDictionary
@@ -148,8 +148,8 @@ class Control:
     Parameters:
         methods:
             The names of the methods on the model which this control will react to
-            When they are calthrough the Nodeled. This is either a comma seperated string,
-            or a list of strings.
+            When they are calthrough the Nodeled. This is either a comma seperated
+            string, or a list of strings.
         before:
             A control method that reacts before any of the given ``methods`` are
             called. If given as a callable, then that function will be used as the
