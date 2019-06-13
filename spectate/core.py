@@ -421,7 +421,7 @@ class Immutable(Mapping):
 
     def __setattr__(self, key, value):
         if key.startswith("_%s" % type(self).__name__):
-            super().__setattr__(key, value)
+            super(Immutable, self).__setattr__(key, value)
         else:
             raise TypeError("%r is immutable")
 
