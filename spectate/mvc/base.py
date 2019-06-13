@@ -2,6 +2,7 @@
 from inspect import signature
 from functools import wraps, partial
 from typing import Union, Callable, Optional
+from contextlib import contextmanager
 from weakref import WeakValueDictionary
 
 from spectate.core import Watchable, watched, Immutable, MethodSpectator
@@ -9,7 +10,7 @@ from spectate.core import Watchable, watched, Immutable, MethodSpectator
 from .utils import members
 
 
-__all__ = ["Model", "Structure", "Control", "view", "unview", "views"]
+__all__ = ["Model", "Control", "view", "unview", "views", "link", "unlink", "notifier"]
 
 
 def views(model: "Model") -> list:
@@ -43,7 +44,7 @@ def view(model: "Model", *functions: Callable) -> Optional[Callable]:
             items.append(1)
     """
     if not isinstance(model, Model):
-        raise TypeError("Expected a Model, not %r." % model)
+        raise TypeError("Expected a Model, notself._model_notifier() %r." % model)
 
     def setup(function: Callable):
         model._attach_model_view(function)
@@ -68,6 +69,64 @@ def unview(model: "Model", function: Callable):
         ValueError: If the given ``function`` is not a view of the given ``model``.
     """
     model._remove_model_view(function)
+
+
+def link(source, *targets):
+    """Attach all of the source's present and future view functions to the targets.
+
+    Parameters:
+        source: The model whose view functions will be attached to the targets.
+        targets: The models that will acquire the source's view functions.
+    """
+    for t in targets:
+        source._attach_child_model(t)
+
+
+def unlink(source, *targets):
+    """Remove all of the source's present and future view functions from the targets.
+
+    Parameters:
+        source: The model whose view functions will be removed from the targets.
+        targets: The models that will no longer share view functions with the source.
+    """
+    for t in targets:
+        source._remove_child_model(t)
+
+
+@contextmanager
+def notifier(model):
+    """Manually send notifications to the given model.
+
+    Parameters:
+        model: The model whose views will recieve notifications
+
+    Returns:
+        A function whose keyword arguments become event data.
+
+    Example:
+
+        .. code-block:: python
+
+            m = Model()
+
+            @view(m)
+            def printer(m, events):
+                for e in events:
+                    print(e)
+
+            with notifier(m) as notify:
+                # the view should print out this event
+                notify(x=1, y=2)
+    """
+    events = []
+
+    def notify(**event):
+        events.append(Immutable(event))
+
+    yield notify
+
+    if events:
+        model._notify_model_views(events)
 
 
 class Control:
@@ -204,20 +263,13 @@ class BoundControl:
 
         @wraps(before)
         def beforeback(value, call):
-            events = []
-
-            def notify(**event):
-                events.append(Immutable(event))
-
             def parameters():
                 meth = getattr(value, call.name)
                 bound = signature(meth).bind(*call.args, **call.kwargs)
                 return dict(bound.arguments)
 
-            result = before(call + {"parameters": parameters}, notify)
-            if events:
-                self._obj._notify_model_views(tuple(events))
-            return result
+            with notifier(value) as notify:
+                return before(call + {"parameters": parameters}, notify)
 
         return beforeback
 
@@ -235,15 +287,8 @@ class BoundControl:
 
         @wraps(after)
         def afterback(value, answer):
-            events = []
-
-            def notify(**event):
-                events.append(Immutable(event))
-
-            result = after(answer, notify)
-            if events:
-                self._obj._notify_model_views(tuple(events))
-            return result
+            with notifier(value) as notify:
+                return after(answer, notify)
 
         return afterback
 
@@ -314,41 +359,15 @@ class Model(Watchable):
             for method in ctrl.methods:
                 spectator.callback(method, ctrl.before, ctrl.after)
         object.__setattr__(self, "_model_views", [])
-        return self
-
-    def _attach_model_view(self, function):
-        self._model_views.append(function)
-
-    def _remove_model_view(self, function):
-        self._model_views.remove(function)
-
-    def _notify_model_views(self, events):
-        for view in self._model_views:
-            view(self, tuple(events))
-
-
-class Structure(Model):
-    def __new__(cls, *args, **kwargs):
-        self = super().__new__(cls)
         object.__setattr__(self, "_inner_models", WeakValueDictionary())
         return self
 
-    def _attach_model_view(self, function):
-        super()._attach_model_view(function)
-        for inner in self._inner_models.values():
-            inner._attach_model_view(function)
-
-    def _remove_model_view(self, function):
-        super()._remove_model_view(function)
-        for inner in self._inner_models.values():
-            inner._remove_model_view(function)
-
-    def _attach_inner_model(self, model):
+    def _attach_child_model(self, model):
         self._inner_models[id(model)] = model
         for v in self._model_views:
             model._attach_model_view(v)
 
-    def _remove_inner_model(self, model):
+    def _remove_child_model(self, model):
         try:
             del self._inner_models[id(model)]
         except KeyError:
@@ -357,16 +376,20 @@ class Structure(Model):
             for v in self._model_views:
                 model._remove_model_view(v)
 
-    def _capture_inner_event(self, event):
-        if "new" in event and isinstance(event.new, Model):
-            self._attach_inner_model(event.new)
-        if "old" in event and isinstance(event.old, Model):
-            self._remove_inner_model(event.old)
+    def _attach_model_view(self, function):
+        self._model_views.append(function)
+        for inner in self._inner_models.values():
+            inner._attach_model_view(function)
+
+    def _remove_model_view(self, function):
+        self._model_views.remove(function)
+        for inner in self._inner_models.values():
+            inner._remove_model_view(function)
 
     def _notify_model_views(self, events):
-        for evt in events:
-            self._capture_inner_event(evt)
-        super()._notify_model_views(events)
+        events = tuple(events)
+        for view in self._model_views:
+            view(self, events)
 
 
 # The MIT License (MIT)

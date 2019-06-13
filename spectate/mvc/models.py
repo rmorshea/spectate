@@ -4,13 +4,23 @@ import inspect
 import itertools
 
 from .utils import Sentinel
-from .base import Structure, Control
+from .base import Model, Control
 
 
-__all__ = ["List", "Dict", "Set", "Object", "Undefined"]
+__all__ = ["Structure", "List", "Dict", "Set", "Object", "Undefined"]
 
 
 Undefined = Sentinel("Undefined")
+
+
+class Structure(Model):
+    def _notify_model_views(self, events):
+        for e in events:
+            if "new" in e and isinstance(e.new, Model):
+                self._attach_child_model(e.new)
+            if "old" in e and isinstance(e.old, Model):
+                self._remove_child_model(e.old)
+        super()._notify_model_views(events)
 
 
 class List(Structure, list):
