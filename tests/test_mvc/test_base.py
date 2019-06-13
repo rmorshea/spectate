@@ -163,3 +163,98 @@ def test_structure_events():
     s2.set(None)
 
     assert not calls
+
+
+def test_notifier_context_manager():
+    calls = []
+    m = mvc.Model()
+
+    @mvc.view(m)
+    def viewer(m, events):
+        calls.extend(events)
+
+    with mvc.notifier(m) as notify:
+        notify(data=1)
+        assert calls == []
+
+    assert calls == [{"data": 1}]
+    calls.clear()
+
+    with mvc.notifier(m) as notify:
+        notify(data=1)
+        notify(data=2)
+
+    assert calls == [{"data": 1}, {"data": 2}]
+
+
+def test_link_and_unlink_inner_models():
+    calls = []
+
+    parent = mvc.Model()
+    child = mvc.Model()
+    grandchild = mvc.Model()
+
+    mvc.link(parent, child)
+    mvc.link(child, grandchild)
+
+    def trigger_events():
+        with mvc.notifier(grandchild) as notify:
+            notify({"data": 1})
+        with mvc.notifier(child) as notify:
+            notify({"data": 2})
+        with mvc.notifier(parent) as notify:
+            notify({"data": 3})
+        copy = calls[:]
+        calls.clear()
+        return copy
+
+    @mvc.view(parent)
+    def viewer(value, events):
+        calls.append({"v": value, "e": list(events)})
+
+    assert trigger_events() == [
+        {"v": grandchild, "e": [{"data": 1}]},
+        {"v": child, "e": [{"data": 2}]},
+        {"v": parent, "e": [{"data": 3}]}
+    ]
+
+    mvc.unlink(child, grandchild)
+    assert trigger_events() == [
+        {"v": child, "e": [{"data": 2}]},
+        {"v": parent, "e": [{"data": 3}]}
+    ]
+
+    mvc.unlink(parent, child)
+    assert trigger_events() == [
+        {"v": parent, "e": [{"data": 3}]}
+    ]
+
+
+def test_unlink_middleman_stops_view_of_leaf_models():
+    calls = []
+
+    parent = mvc.Model()
+    child = mvc.Model()
+    grandchild = mvc.Model()
+
+    mvc.link(parent, child)
+    mvc.link(child, grandchild)
+
+    def trigger_events():
+        with mvc.notifier(grandchild) as notify:
+            notify({"data": 1})
+        with mvc.notifier(child) as notify:
+            notify({"data": 2})
+        with mvc.notifier(parent) as notify:
+            notify({"data": 3})
+        copy = calls[:]
+        calls.clear()
+        return copy
+
+    @mvc.view(parent)
+    def viewer(value, events):
+        calls.append({"v": value, "e": list(events)})
+
+    mvc.unlink(parent, child)
+
+    assert trigger_events() == [{"v": parent, "e": [{"data": 3}]}]

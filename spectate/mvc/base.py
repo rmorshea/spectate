@@ -120,8 +120,8 @@ def notifier(model):
     """
     events = []
 
-    def notify(**event):
-        events.append(Immutable(event))
+    def notify(*args, **kwargs):
+        events.append(Immutable(*args, **kwargs))
 
     yield notify
 
