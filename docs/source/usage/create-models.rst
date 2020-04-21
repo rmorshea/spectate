@@ -83,10 +83,10 @@ receive when they are called.
         def decrement(self, amount):
             self.value -= amount
 
-        _control_change = (
-            mvc.Control('increment', 'decrement')
-            .before("_before_change")
-            .after("_after_change")
+        _control_change = mvc.Control(
+            ["increment", "decrement"],
+            before="_before_change",
+            after="_after_change",
         )
 
         def _before_change(self, call, notify):
@@ -155,10 +155,10 @@ between the state before and the state after a change takes place:
         def decrement(self, amount):
             self.value -= amount
 
-        _control_change = (
-            mvc.Control('increment', 'decrement')
-            .before("_before_change")
-            .after("_after_change")
+        _control_change = mvc.Control(
+            ["increment", "decrement"],
+            before="_before_change",
+            after="_after_change",
         )
 
         def _before_change(self, call, notify):
