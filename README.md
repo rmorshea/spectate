@@ -6,7 +6,7 @@
 
 A library for Python 2 and 3 that can track changes to mutable data types.
 
-With `spectate` complicated protocols for managing updates, don't need to be the outward responsibility of a user, and can instead be done automagically in the background. For instance, syncing the state between a server and client can controlled by `spectate` so user's don't have to.
+With `spectate`, complicated protocols for managing updates don't need to be the outward responsibility of a user and can instead be done automagically in the background. For instance, syncing the state between a server and client can controlled by `spectate`, so users don't have to.
 
 
 # Documentation
