@@ -1,8 +1,7 @@
 from contextlib import contextmanager
 from typing import Iterator, Callable, Optional
 
-from spectate import Immutable
-
+from .utils import Immutable
 from .base import Model
 
 __all__ = ["hold", "mute", "rollback"]

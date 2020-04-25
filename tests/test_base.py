@@ -1,6 +1,5 @@
 from pytest import raises
 
-from spectate.core import MethodSpectator
 from spectate import mvc
 
 from .mock import model_events, Counter
@@ -29,8 +28,6 @@ def test_control_using_functions():
             calls.append("during")
 
         control = mvc.Control("method", before=_control_before, after=_control_after)
-
-    assert isinstance(X.method, MethodSpectator)
 
     X().method()
     assert calls == ["before", "during", "after"]
@@ -98,18 +95,6 @@ def test_add_new_control_in_subclass():
     counter.increment(1)
 
     assert events == [{"message": "before"}, {"old": 0, "new": 1}]
-
-
-def test_delete_controls_in_subclass():
-    class MyCounter(Counter):
-
-        _control_change = None
-
-    counter, events = model_events(MyCounter)
-
-    counter.increment(1)
-
-    assert events == []
 
 
 def test_structure_events():
@@ -215,19 +200,17 @@ def test_link_and_unlink_inner_models():
     assert trigger_events() == [
         {"v": grandchild, "e": [{"data": 1}]},
         {"v": child, "e": [{"data": 2}]},
-        {"v": parent, "e": [{"data": 3}]}
+        {"v": parent, "e": [{"data": 3}]},
     ]
 
     mvc.unlink(child, grandchild)
     assert trigger_events() == [
         {"v": child, "e": [{"data": 2}]},
-        {"v": parent, "e": [{"data": 3}]}
+        {"v": parent, "e": [{"data": 3}]},
     ]
 
     mvc.unlink(parent, child)
-    assert trigger_events() == [
-        {"v": parent, "e": [{"data": 3}]}
-    ]
+    assert trigger_events() == [{"v": parent, "e": [{"data": 3}]}]
 
 
 def test_unlink_middleman_stops_view_of_leaf_models():

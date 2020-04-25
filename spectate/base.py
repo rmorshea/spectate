@@ -5,9 +5,7 @@ from typing import Union, Callable, Optional
 from contextlib import contextmanager
 from weakref import WeakValueDictionary
 
-from spectate.core import Watchable, watched, Immutable, MethodSpectator
-
-from .utils import members
+from .utils import members, Immutable
 
 
 __all__ = ["Model", "Control", "view", "unview", "views", "link", "unlink", "notifier"]
@@ -209,7 +207,7 @@ class Control:
         elif isinstance(methods, str):
             self.methods = tuple(map(str.strip, methods.split(",")))
         else:
-            raise ValueError("methods must be a string of list of strings")
+            raise ValueError("methods must be a string or list of strings")
         self.name = None
         if isinstance(before, Control):
             before = before._before
@@ -233,7 +231,35 @@ class Control:
         else:
             self.name = name
         for m in self.methods:
-            setattr(cls, m, MethodSpectator(getattr(cls, m), m))
+            setattr(cls, m, self._create_controlled_method(cls, m))
+
+    def _create_controlled_method(self, cls, name):
+        method = getattr(cls, name)
+
+        @wraps(method)
+        def wrapped_method(obj, *args, **kwargs):
+            cls = type(obj)
+            bound_control = self.__get__(obj, cls)
+
+            before_control = bound_control.before
+            if before_control is not None:
+                before_value = before_control(
+                    obj, Immutable(name=name, args=args, kwargs=kwargs)
+                )
+            else:
+                before_value = None
+
+            result = method.__get__(obj, cls)(*args, **kwargs)
+
+            after_control = bound_control.after
+            if after_control is not None:
+                after_value = after_control(
+                    obj, Immutable(before=before_value, name=name, value=result)
+                )
+
+            return result
+
+        return wrapped_method
 
 
 class BoundControl:
@@ -293,7 +319,7 @@ class BoundControl:
         return afterback
 
 
-class Model(Watchable):
+class Model:
     """An object that can be :class:`controlled <Control>` and :func:`viewed <view>`.
 
     Users should define :class:`Control` methods and then :func:`view` the change
@@ -332,34 +358,18 @@ class Model(Watchable):
             def printer(o, events):
                 for e in events:
                     print(e)
-
-            o.a = 1
-            o.b = 2
-
-        .. code-block:: text
-
-            {'attr': 'a', 'old': Undefined, 'new': 1}
-            {'attr': 'b', 'old': Undefined, 'new': 2}
     """
 
-    _model_controls = ()
-
-    def __init_subclass__(cls, **kwargs):
-        controls = []
-        for k, v in members(cls):
-            if isinstance(v, Control):
-                controls.append(k)
-        cls._model_controls = tuple(controls)
-        super().__init_subclass__(**kwargs)
-
     def __new__(cls, *args, **kwargs):
-        self, spectator = watched(super().__new__, cls)
-        for name in cls._model_controls:
-            ctrl = getattr(self, name)
-            for method in ctrl.methods:
-                spectator.callback(method, ctrl.before, ctrl.after)
+        new = super().__new__
+        if new is not object.__new__:
+            self = new(cls, *args, **kwargs)
+        else:
+            self = new(cls)
+
         object.__setattr__(self, "_model_views", [])
         object.__setattr__(self, "_inner_models", WeakValueDictionary())
+
         return self
 
     def _attach_child_model(self, model):
@@ -390,6 +400,19 @@ class Model(Watchable):
         events = tuple(events)
         for view in self._model_views:
             view(self, events)
+
+
+def _safe_signature(func):
+    try:
+        return signature(func)
+    except ValueError:
+        # builtin methods don't have sigantures
+        return Signature(
+            [
+                Parameter("args", Parameter.VAR_POSITIONAL),
+                Parameter("kwargs", Parameter.VAR_KEYWORD),
+            ]
+        )
 
 
 # The MIT License (MIT)
