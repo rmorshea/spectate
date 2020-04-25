@@ -5,7 +5,7 @@ from typing import Union, Callable, Optional
 from contextlib import contextmanager
 from weakref import WeakValueDictionary
 
-from .utils import members, Immutable
+from .utils import Immutable
 
 
 __all__ = ["Model", "Control", "view", "unview", "views", "link", "unlink", "notifier"]
@@ -253,7 +253,7 @@ class Control:
 
             after_control = bound_control.after
             if after_control is not None:
-                after_value = after_control(
+                after_control(
                     obj, Immutable(before=before_value, name=name, value=result)
                 )
 
@@ -400,19 +400,6 @@ class Model:
         events = tuple(events)
         for view in self._model_views:
             view(self, events)
-
-
-def _safe_signature(func):
-    try:
-        return signature(func)
-    except ValueError:
-        # builtin methods don't have sigantures
-        return Signature(
-            [
-                Parameter("args", Parameter.VAR_POSITIONAL),
-                Parameter("kwargs", Parameter.VAR_KEYWORD),
-            ]
-        )
 
 
 # The MIT License (MIT)
