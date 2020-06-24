@@ -115,10 +115,7 @@ class List(Structure, list):
             notify(index=i, old=Undefined, new=self[i])
 
     def _control_before_pop(self, call, notify):
-        if not call.args:
-            index = len(self) - 1
-        else:
-            index = call.args[0]
+        index = len(self) - 1 if not call.args else call.args[0]
         return index, self[index:]
 
     def _control_before_clear(self, call, notify):
@@ -200,8 +197,7 @@ class Dict(Structure, dict):
             new.update(call.kwargs)
         else:
             new = call.kwargs
-        old = {k: self.get(k, Undefined) for k in new}
-        return old
+        return {k: self.get(k, Undefined) for k in new}
 
     def _control_after_update(self, answer, notify):
         for k, v in answer.before.items():

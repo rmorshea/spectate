@@ -362,11 +362,7 @@ class Model:
 
     def __new__(cls, *args, **kwargs):
         new = super().__new__
-        if new is not object.__new__:
-            self = new(cls, *args, **kwargs)
-        else:
-            self = new(cls)
-
+        self = new(cls, *args, **kwargs) if new is not object.__new__ else new(cls)
         object.__setattr__(self, "_model_views", [])
         object.__setattr__(self, "_inner_models", WeakValueDictionary())
 

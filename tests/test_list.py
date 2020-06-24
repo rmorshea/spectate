@@ -75,7 +75,7 @@ _method_call_and_expected_event = [
     {
         "value": [],
         "method": "extend",
-        "args": [(i for i in range(1, 4))],
+        "args": [iter(range(1, 4))],
         "kwargs": {},
         "events": [
             {"old": undef, "new": 1, "index": 0},
@@ -111,14 +111,20 @@ _method_call_and_expected_event = [
         "method": "sort",
         "args": [],
         "kwargs": {},
-        "events": [{"old": 3, "new": 1, "index": 0}, {"old": 1, "new": 3, "index": 2}],
+        "events": [
+            {"old": 3, "new": 1, "index": 0},
+            {"old": 1, "new": 3, "index": 2},
+        ],
     },
     {
         "value": [1, 2, 3],
         "method": "reverse",
         "args": [],
         "kwargs": {},
-        "events": [{"old": 1, "new": 3, "index": 0}, {"old": 3, "new": 1, "index": 2}],
+        "events": [
+            {"old": 1, "new": 3, "index": 0},
+            {"old": 3, "new": 1, "index": 2},
+        ],
     },
 ]
 
