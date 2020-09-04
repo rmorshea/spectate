@@ -9,6 +9,7 @@ funcsigs;python_version<"3.6"
 # Distribution
 # ============
 twine
+wheel
 cmarkgfm
 
 # Documentation

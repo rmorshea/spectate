@@ -12,7 +12,7 @@ Holding Events
 --------------
 
 It's often useful to withhold sending notifications until all your changes are complete.
-Using the :func:`~spectate.mvc.events.hold` context manager, events created when
+Using the :func:`~spectate.events.hold` context manager, events created when
 modifying a model won't be distributed until we exit the context:
 
 .. code-block:: python
@@ -42,7 +42,7 @@ Merging Events
 
 Sometimes there is a block of code in which it's possible to produce duplicate events
 or events which could be merged into one. By passing in a ``reducer`` to
-:func:`~spectate.mvc.events.hold` you can change the list of events just before they
+:func:`~spectate.events.hold` you can change the list of events just before they
 are distributed. This is done by having the ``reducer`` return or yield the new events.
 
 .. code-block:: python
@@ -79,7 +79,7 @@ Rolling Back Events
 -------------------
 
 When an error occurs while modifying a model you may not want to distribute events.
-Using :func:`~spectate.mvc.events.rollback` you can suppress events that were produced
+Using :func:`~spectate.events.rollback` you can suppress events that were produced
 in the same context as an error:
 
 .. code-block:: python
@@ -104,7 +104,7 @@ in the same context as an error:
 Rolling Back Changes
 ''''''''''''''''''''
 
-Suppressing events after an error may not be enough. You can pass :func:`~spectate.mvc.events.rollback`
+Suppressing events after an error may not be enough. You can pass :func:`~spectate.events.rollback`
 an ``undo`` function which gives you a chances to analyze the events in order to determine
 and then return a model to its original state. Any events that you might produce while
 modifying a model within the ``undo`` function will be :ref:`muted <Muting Events>`.
@@ -142,7 +142,7 @@ Muting Events
 
 If you are setting a default state, or returning to one, it may be useful to withhold
 events completely. This one's pretty simple compared to the context managers above.
-Just use :func:`~spectate.mvc.events.mute` and within its context, no events will
+Just use :func:`~spectate.events.mute` and within its context, no events will
 be distributed:
 
 .. code-block:: python
@@ -158,3 +158,33 @@ be distributed:
 
     with mvc.mute(l):
         l.append(1)
+
+
+Force Notifying
+---------------
+
+At times, and more likely when writing tests, you may need to forcefully send an event
+to a model. This can be achieved using the :func:`~spectate.base.notifier` context
+manager which provides a ``notify()`` function identical to the one seen in
+:ref:`Model Callbacks`.
+
+.. warning::
+
+    While you could use :func:`~spectate.base.notifier` instead of adding
+    :ref:`Adding Model Controls` to your custom models, this is generall discouraged
+    because the resulting implementation is resistent to extension in subclasses.
+
+.. code-block:: python
+
+    from spectate import mvc
+
+    m = mvc.Model()
+
+    @mvc.view(m)
+    def printer(m, events):
+        for e in events:
+            print(e)
+
+    with mvc.notifier(m) as notify:
+        # the view should print out this event
+        notify(x=1, y=2)
