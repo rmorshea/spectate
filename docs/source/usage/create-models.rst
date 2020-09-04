@@ -1,15 +1,15 @@
 Creating Models
 ===============
 
-Creating models requires you to define a :class:`~spectate.mvc.base.Model` subclass
-which has :class:`~spectate.mvc.base.Control` objects assigned to it. Each control
+Creating models requires you to define a :class:`~spectate.base.Model` subclass
+which has :class:`~spectate.base.Control` objects assigned to it. Each control
 object is responsible for observing calls to particular methods on the model class.
 For example, if you wanted to know when an element was appended to a list you might
 observe the ``append`` method.
 
 To show how this works we will implement a simple counter with the goal of knowing when
 the value in the counter has incremented or decremented. To get started we should create
-a ``Counter`` class which inherits from :class:`~spectate.mvc.base.Model` and define
+a ``Counter`` class which inherits from :class:`~spectate.base.Model` and define
 its ``increment`` and ``decrement`` methods normally:
 
 .. code-block:: python
@@ -41,7 +41,7 @@ Adding Model Controls
 
 Because we know that the value within the ``Counter`` changes whenever ``increment`` or
 ``decrement`` is called these are the methods that we must observe in order to determine
-whether, and by how much it changes. Do do this we should add a :class:`~spectate.mvc.base.Control`
+whether, and by how much it changes. Do do this we should add a :class:`~spectate.base.Control`
 to the ``Counter`` and pass in the names of the methods it should be tracking.
 
 .. code-block:: python
@@ -63,8 +63,8 @@ to the ``Counter`` and pass in the names of the methods it should be tracking.
 
 We define the behavior of ``_control_change`` with methods that are triggered before
 and/or after the ones being observed. We register these with
-:meth:`Control.before() <~spectate.mvc.base.Control.before>`
-and :meth:`Control.after() <~spectate.mvc.base.Control.after>`. For now our
+:meth:`Control.before() <~spectate.base.Control.before>`
+and :meth:`Control.after() <~spectate.base.Control.after>`. For now our
 beforeback and afterback will just contain print statements so we can see what they
 receive when they are called.
 
@@ -200,7 +200,7 @@ Sending Event Notifications
 We're now able to use :ref:`"beforebacks" <Model Beforebacks>` and
 :ref:`"afterbacks" <Model Afterbacks>` to print out information about a model before
 and after a change occures, but what we actually want is to send this same information to
-:func:`views <spectate.mvc.base.view>` as we did when we learned :ref:`the basics`.
+:func:`views <spectate.base.view>` as we did when we learned :ref:`the basics`.
 To accomplish this we use the ``notify`` function passed into the beforeback and
 afterback and pass it keyword parameters that can be consumed by views. To keep
 things simple we'll just replace our ``print`` statements with calls to ``notify``:
@@ -287,7 +287,7 @@ Have a signature of ``(call, notify) -> before``
       passed to the method have been mapped to argument names. This won't work for builtin
       method like :meth:`dict.get` since they're implemented in C.
 
-+ ``notify`` is a function which will distribute an event to :func:`views <spectate.mvc.base.view>`
++ ``notify`` is a function which will distribute an event to :func:`views <spectate.base.view>`
 
 + ``before`` is a value which gets passed on to its respective :ref:`afterback <Model Afterbacks>`.
 
@@ -305,4 +305,4 @@ Have a signature of ``(answer, notify)``
 
     + ``'before'`` - the value returned by the respective beforeback
 
-+ ``notify`` is a function which will distribute an event to :func:`views <spectate.mvc.base.view>`
++ ``notify`` is a function which will distribute an event to :func:`views <spectate.base.view>`

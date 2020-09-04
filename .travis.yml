@@ -15,20 +15,20 @@ script: eval $TEST_CMD
 matrix:
   include:
     - name: "dist"
-      python: 3.7
+      python: 3.8
       env:
         - TEST_CMD="python setup.py sdist bdist_wheel; pip install readme_renderer; twine check dist/*"
     - name: "black"
-      python: 3.7
+      python: 3.8
       env:
-        - TEST_CMD="black --verbose ."
+        - TEST_CMD="black --check ."
     - name: "flake8"
-      python: 3.7
+      python: 3.8
       env:
         - TEST_CMD="flake8"
     - name: "python-3.6"
       python: 3.6
     - name: "python-3.7"
       python: 3.7
-    - name: "python-3.8-dev"
-      python: 3.8-dev
+    - name: "python-3.8"
+      python: 3.8

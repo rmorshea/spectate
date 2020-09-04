@@ -9,11 +9,11 @@ then you can :ref:`define your own models <Creating Models>`.
 Dictionary
 ''''''''''
 
-The :class:`~spectate.mvc.models.Dict` model is a subclass of Python's standard
+The :class:`~spectate.models.Dict` model is a subclass of Python's standard
 :class:`dict`. This will produce events when the value of a key in the dictionary
 changes or is deleted. This will result when calling methods like :meth:`dict.update`
 and :meth:`dict.pop`, but also when using the normal syntax to set or delete an item.
-Events produced by :class:`~spectate.mvc.models.Dict` have the following fields:
+Events produced by :class:`~spectate.models.Dict` have the following fields:
 
 .. list-table::
   :widths: 1 10
@@ -27,22 +27,22 @@ Events produced by :class:`~spectate.mvc.models.Dict` have the following fields:
 
   * - ``old``
     - * The value that was present in the key before the change
-      * Is :attr:`~spectate.mvc.models.Undefined` if the index was not present.
+      * Is :attr:`~spectate.models.Undefined` if the index was not present.
 
   * - ``new``
     - * The value that this is now present after the change
-      * Is :attr:`~spectate.mvc.models.Undefined` if the index was deleted.
+      * Is :attr:`~spectate.models.Undefined` if the index was deleted.
 
 
 List
 ''''
 
-The :class:`~spectate.mvc.models.List` model is a subclass of Python's standard
+The :class:`~spectate.models.List` model is a subclass of Python's standard
 :class:`list`. This model will produce events when an element of the list changes
 or an element changes from one position to another. This may happen when calling
 methods like :meth:`list.append` or :meth:`list.remove`, but also when using the
 normal syntax to set or delete an item. Events produced by
-:class:`~spectate.mvc.models.List` have the following keys:
+:class:`~spectate.models.List` have the following keys:
 
 .. list-table::
   :widths: 1 10
@@ -56,20 +56,20 @@ normal syntax to set or delete an item. Events produced by
 
   * - ``old``
     - * The value that was present before the change
-      * Is :attr:`~spectate.mvc.models.Undefined` if the key was not present.
+      * Is :attr:`~spectate.models.Undefined` if the key was not present.
 
   * - ``new``
     - * The value that this is now present after the change
-      * Is :attr:`~spectate.mvc.models.Undefined` if the key was deleted.
+      * Is :attr:`~spectate.models.Undefined` if the key was deleted.
 
 
 Set
 '''
 
-The :class:`~spectate.mvc.models.Set` model is a subclass of Python's standard
+The :class:`~spectate.models.Set` model is a subclass of Python's standard
 :class:`set`. This model will produce events when an element of the set changes.
 This may happen when calling methods like :meth:`set.add` or :meth:`set.discard`.
-Events produced by :class:`~spectate.mvc.models.Set` have the following keys:
+Events produced by :class:`~spectate.models.Set` have the following keys:
 
 .. list-table::
   :widths: 1 10
@@ -88,11 +88,11 @@ Events produced by :class:`~spectate.mvc.models.Set` have the following keys:
 Object
 ''''''
 
-The :class:`~spectate.mvc.models.Object` model is a subclass of Python's standard
+The :class:`~spectate.models.Object` model is a subclass of Python's standard
 :class:`object`. This model will produce events when an attribute of the object changes
 or is deleted. This may happen when using :func:`setattr` or :func:`delattr`, but also
 when using the normal syntax to set or delete attributes. Events produced by
-:class:`~spectate.mvc.models.Object` have the following keys:
+:class:`~spectate.models.Object` have the following keys:
 
 .. list-table::
   :widths: 1 10
@@ -106,8 +106,8 @@ when using the normal syntax to set or delete attributes. Events produced by
 
   * - ``old``
     - * The value that was present before the change
-      * Is :attr:`~spectate.mvc.models.Undefined` if the attribute was not present.
+      * Is :attr:`~spectate.models.Undefined` if the attribute was not present.
 
   * - ``new``
     - * The value that this is now present after the change
-      * Is :attr:`~spectate.mvc.models.Undefined` if the key was deleted.
+      * Is :attr:`~spectate.models.Undefined` if the key was deleted.

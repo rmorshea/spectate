@@ -3,15 +3,15 @@ The Basics
 
 Spectate defines three main constructs:
 
-1. :class:`models <spectate.mvc.base.Model>` - objects which get modified by the user.
+1. :class:`models <spectate.base.Model>` - objects which get modified by the user.
 
-2. :func:`views <spectate.mvc.base.view>` - functions which receives change events.
+2. :func:`views <spectate.base.view>` - functions which receives change events.
 
-3. :class:`controls <spectate.mvc.base.Control>` - private attributes of a model which produces change events.
+3. :class:`controls <spectate.base.Control>` - private attributes of a model which produces change events.
 
-Since the :mod:`mvc <spectate.mvc>` module already provides some basic models for us you
-don't need to worry about :class:`controls <spectate.mvc.base.Control>` yet. Let's begin
-by considering a builtin :class:`~spectate.mvc.models.Dict` model. We can instantiate
+Since the :mod:`mvc <spectate>` module already provides some basic models for us you
+don't need to worry about :class:`controls <spectate.base.Control>` yet. Let's begin
+by considering a builtin :class:`~spectate.models.Dict` model. We can instantiate
 this object just as we would with a standard :class:`dict`:
 
 .. code-block:: python
@@ -20,7 +20,7 @@ this object just as we would with a standard :class:`dict`:
 
     d = mvc.Dict(a=0)
 
-Now though, we can now register a :func:`~spectate.mvc.base.view` function with a
+Now though, we can now register a :func:`~spectate.base.view` function with a
 decorator. This view function is called any time a change is made to the model ``d``
 that causes its data to be mutated.
 
@@ -33,7 +33,7 @@ that causes its data to be mutated.
 
 Change events are passed into this function as a tuple of immutable dict-like objects
 containing change information. Each model has its own change event information.
-In the case of a :class:`~spectate.mvc.models.Dict` the event objects have the fields
+In the case of a :class:`~spectate.models.Dict` the event objects have the fields
 ``key``, ``old``, and ``new``. So when we change a key in ``d`` we'll find that our
 ``printer`` view function is called and that it prints out an event object with the
 expected information:
@@ -57,3 +57,23 @@ objects can be broadcast to the view function:
 
     {'key': 'b', 'old': Undefined, 'new': 2}
     {'key': 'c', 'old': Undefined, 'new': 3}
+
+
+Nested Models
+-------------
+
+What if we want to observe changes to nested data structures though? Thankfuly
+Spectate's :ref:`Builtin Model Types` which inherit from :class:`~spectate.models.Structure`
+can handle this for you:
+
+.. code-block:: python
+
+    from spectate import mvc
+
+    outer_dict = mvc.Dict()
+    inner_dict = mvc.Dict()
+
+    outer_dict["inner"] = inner_dict
+
+    @mvc.view(outer_dict)
+    def printer(value, events):
