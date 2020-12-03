@@ -1,8 +1,6 @@
-from collections.abc import Mapping
-
-
 class Sentinel:
     __slots__ = "_name"
+
     def __init__(self, name):
         self._name = name
 
