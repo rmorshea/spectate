@@ -38,4 +38,4 @@ class Counter(mvc.Model):
         return self.value
 
     def _control_after_change(self, answer, notify):
-        notify(old=answer.before, new=self.value)
+        notify(old=answer["before"], new=self.value)

@@ -4,7 +4,7 @@ Usage
 .. toctree::
     :maxdepth: 2
 
-    basics
-    events
-    builtins
-    create-models
+    the-basics
+    handling-events
+    builtin-model-types
+    spectating-other-types

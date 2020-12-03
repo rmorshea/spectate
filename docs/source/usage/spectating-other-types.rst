@@ -1,16 +1,30 @@
-Creating Models
-===============
+Spectating Other Types
+======================
 
-Creating models requires you to define a :class:`~spectate.base.Model` subclass
-which has :class:`~spectate.base.Control` objects assigned to it. Each control
-object is responsible for observing calls to particular methods on the model class.
-For example, if you wanted to know when an element was appended to a list you might
-observe the ``append`` method.
+In a prior example demonstrating how to create :ref:`a custom model <Custom Models>` we
+used :func:`~spectate.base.notifier` to produce events. This is sufficient in most cases,
+but sometimes you arent' able to manually trigger
+events from within a method. This might occur when inheriting from a builtin type
+(e.g. ``list``, ``dict``, etc) that is implemented in C or a third party package that
+doesn't use ``spectate``. In those cases, you must wrap an existing method and are
+religated to producing events before and/or after it gets called.
+
+In these scenarios you must define a :class:`~spectate.base.Model` subclass which has
+:class:`~spectate.base.Control` objects assigned to it. Each control object is
+responsible for observing calls to particular methods on the model class. For example,
+if you wanted to know when an element was appended to a list you might observe the
+``append`` method.
 
 To show how this works we will implement a simple counter with the goal of knowing when
 the value in the counter has incremented or decremented. To get started we should create
 a ``Counter`` class which inherits from :class:`~spectate.base.Model` and define
 its ``increment`` and ``decrement`` methods normally:
+
+.. note::
+
+    Usually if you're using :class:`~spectate.base.Control` objects you'd do it with
+    `multiple inheritance <https://docs.python.org/3/tutorial/classes.html#multiple-inheritance>`__,
+    but to keep things simple we aren't doing that in the following examples.
 
 .. code-block:: python
 
@@ -129,12 +143,12 @@ No lets see what happens we can call ``increment`` or ``decrement``:
     <function BoundControl.after.<locals>.afterback.<locals>.notify at 0x7f9ce57e89d8>
 
 
-Model Callbacks
----------------
+Control Callbacks
+-----------------
 
 The callback pair we registered to our ``Counter`` when learning how to
 :ref:`define controls <Adding Model Controls>`, hereafter referred to as
-:ref:`"beforebacks" <Model Beforebacks>` and :ref:`"afterbacks" <Model Afterbacks>`
+:ref:`"beforebacks" <Control Beforebacks>` and :ref:`"afterbacks" <Control Afterbacks>`
 are how event information is communicated to views. Defining both a beforeback and
 an afterback is not required, but doing so allows for a beforeback to pass data to its
 corresponding afterback which in turn makes it possible to compute the difference
@@ -163,16 +177,16 @@ between the state before and the state after a change takes place:
 
         def _before_change(self, call, notify):
             amount = call.parameters()["amount"]
-            print("value will %s by %s" % (call.name, amount))
+            print(f"value will {call['name']} by {amount}")
             old_value = self.value
             return old_value
 
         def _after_change(self, answer, notify):
-            old_value = answer.before  # this was returned by `_before_change`
+            old_value = answer["before"]  # this was returned by `_before_change`
             new_value = self.value
-            print("the old value was %r" % old_value)
-            print("the new value is %r" % new_value)
-            print("the value changed by %r" % (new_value - old_value))
+            print(f"the old value was {old_value})
+            print(f"the new value is {new_value})
+            print(f"the value changed by {new_value - old_value}")
 
 Now we can try incrementing and decrementing as before:
 
@@ -194,7 +208,7 @@ Now we can try incrementing and decrementing as before:
     the value changed by -1
 
 
-Sending Event Notifications
+Control Event Notifications
 ---------------------------
 
 We're now able to use :ref:`"beforebacks" <Model Beforebacks>` and
@@ -228,12 +242,12 @@ things simple we'll just replace our ``print`` statements with calls to ``notify
 
         def _before_change(self, call, notify):
             amount = call.parameters()["amount"]
-            notify(message="value will %s by %s" % (call.name, amount))
+            notify(message="value will %s by %s" % (call["name"], amount))
             old_value = self.value
             return old_value
 
         def _after_change(self, answer, notify):
-            old_value = answer.before  # this was returned by `_before_change`
+            old_value = answer["before"]  # this was returned by `_before_change`
             new_value = self.value
             notify(message="the old value was %r" % old_value)
             notify(message="the new value is %r" % new_value)
@@ -265,8 +279,8 @@ To print out the same messages as before we'll need to register a view with out 
     the value changed by -1
 
 
-Model Beforebacks
------------------
+Control Beforebacks
+-------------------
 
 Have a signature of ``(call, notify) -> before``
 
@@ -292,8 +306,8 @@ Have a signature of ``(call, notify) -> before``
 + ``before`` is a value which gets passed on to its respective :ref:`afterback <Model Afterbacks>`.
 
 
-Model Afterbacks
-----------------
+Control Afterbacks
+------------------
 
 Have a signature of ``(answer, notify)``
 

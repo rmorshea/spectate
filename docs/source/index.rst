@@ -10,7 +10,7 @@ and can instead be done automagically in the background.
 
     install
     usage/index
-    api/index
+    api
 
 At A Glance
 -----------

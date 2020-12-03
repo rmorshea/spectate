@@ -3,11 +3,11 @@ Builtin Model Types
 
 Spectate provides a number of builtin model types that you can use out of the box.
 For most users these built-in types should be enough, however if you're adventurous,
-then you can :ref:`define your own models <Creating Models>`.
+then you can create your own :ref:`Custom Models`.
 
 
 Dictionary
-''''''''''
+----------
 
 The :class:`~spectate.models.Dict` model is a subclass of Python's standard
 :class:`dict`. This will produce events when the value of a key in the dictionary
@@ -35,7 +35,7 @@ Events produced by :class:`~spectate.models.Dict` have the following fields:
 
 
 List
-''''
+----
 
 The :class:`~spectate.models.List` model is a subclass of Python's standard
 :class:`list`. This model will produce events when an element of the list changes
@@ -64,7 +64,7 @@ normal syntax to set or delete an item. Events produced by
 
 
 Set
-'''
+---
 
 The :class:`~spectate.models.Set` model is a subclass of Python's standard
 :class:`set`. This model will produce events when an element of the set changes.
@@ -86,7 +86,7 @@ Events produced by :class:`~spectate.models.Set` have the following keys:
 
 
 Object
-''''''
+------
 
 The :class:`~spectate.models.Object` model is a subclass of Python's standard
 :class:`object`. This model will produce events when an attribute of the object changes

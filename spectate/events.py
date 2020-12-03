@@ -1,7 +1,6 @@
 from contextlib import contextmanager
 from typing import Iterator, Callable, Optional
 
-from .utils import Immutable
 from .base import Model
 
 __all__ = ["hold", "mute", "rollback"]
@@ -67,12 +66,10 @@ def hold(model: Model, reducer: Optional[Callable] = None) -> Iterator[list]:
         else:
             model._notify_model_views = restore
 
-        events = tuple(events)
-
         if reducer is not None:
-            events = tuple(map(Immutable, reducer(model, events)))
+            events = reducer(model, events)
 
-        model._notify_model_views(events)
+        model._notify_model_views(tuple(events))
 
 
 @contextmanager
