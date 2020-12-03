@@ -26,6 +26,10 @@ matrix:
       python: 3.8
       env:
         - TEST_CMD="flake8"
+    - name: "mypy"
+      python: 3.8
+      env:
+        - TEST_CMD="mypy spectate"
     - name: "python-3.6"
       python: 3.6
     - name: "python-3.7"
