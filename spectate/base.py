@@ -1,15 +1,30 @@
 # See End Of File For Licensing
 from inspect import signature
 from functools import wraps
-from typing import Union, Callable, Optional
+from typing import (
+    Any,
+    Union,
+    Callable,
+    Optional,
+    TypeVar,
+    Tuple,
+    Dict,
+    List,
+    Iterator,
+    overload,
+)
 from contextlib import contextmanager
 from weakref import WeakValueDictionary
 
 
 __all__ = ["Model", "Control", "view", "unview", "views", "link", "unlink", "notifier"]
 
+Event = Dict[str, Any]
+TupleOfEvents = Tuple[Event, ...]
+ViewFunction = Callable[["Model", TupleOfEvents], None]
 
-def views(model: "Model") -> list:
+
+def views(model: "Model") -> List[ViewFunction]:
     """Return a model's views keyed on what events they respond to.
 
     Model views are added by calling :func:`view` on a model.
@@ -19,7 +34,22 @@ def views(model: "Model") -> list:
     return model._model_views[:]
 
 
-def view(model: "Model", *functions: Callable) -> Optional[Callable]:
+_F = TypeVar("_F", bound=ViewFunction)
+
+
+@overload
+def view(model: "Model") -> Callable[[_F], _F]:
+    ...
+
+
+@overload
+def view(model: "Model", function: ViewFunction) -> None:
+    ...
+
+
+def view(
+    model: "Model", function: Optional[ViewFunction] = None
+) -> Optional[Callable[[_F], _F]]:
     """A decorator for registering a callback to a model
 
     Parameters:
@@ -42,18 +72,18 @@ def view(model: "Model", *functions: Callable) -> Optional[Callable]:
     if not isinstance(model, Model):
         raise TypeError("Expected a Model, notself._model_notifier() %r." % model)
 
-    def setup(function: Callable):
+    def setup(function: _F) -> _F:
         model._attach_model_view(function)
         return function
 
-    if functions:
-        for f in functions:
-            setup(f)
+    if function is not None:
+        setup(function)
+        return None
     else:
         return setup
 
 
-def unview(model: "Model", function: Callable):
+def unview(model: "Model", function: ViewFunction) -> None:
     """Remove a view callbcak from a model.
 
                 target._notify_model_views(tuple(function(value, events)))
@@ -67,7 +97,7 @@ def unview(model: "Model", function: Callable):
     model._remove_model_view(function)
 
 
-def link(source, *targets):
+def link(source: "Model", *targets: "Model") -> None:
     """Attach all of the source's present and future view functions to the targets.
 
     Parameters:
@@ -78,7 +108,7 @@ def link(source, *targets):
         source._attach_child_model(t)
 
 
-def unlink(source, *targets):
+def unlink(source: "Model", *targets: "Model") -> None:
     """Remove all of the source's present and future view functions from the targets.
 
     Parameters:
@@ -90,7 +120,7 @@ def unlink(source, *targets):
 
 
 @contextmanager
-def notifier(model):
+def notifier(model: "Model") -> Iterator[Callable[..., None]]:
     """Manually send notifications to the given model.
 
     Parameters:
@@ -122,7 +152,7 @@ def notifier(model):
     yield notify
 
     if events:
-        model._notify_model_views(events)
+        model._notify_model_views(tuple(events))
 
 
 class Control:
@@ -357,10 +387,13 @@ class Model:
                     print(e)
     """
 
-    def __new__(cls, *args, **kwargs):
+    _model_views: List[ViewFunction]
+    _inner_models: "WeakValueDictionary[int, Model]"
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> "Model":
         new = super().__new__
         if new is not object.__new__:
-            self = new(cls, *args, **kwargs)
+            self = new(cls, *args, **kwargs)  # type: ignore
         else:
             self = new(cls)
 
@@ -369,12 +402,12 @@ class Model:
 
         return self
 
-    def _attach_child_model(self, model):
+    def _attach_child_model(self, model: "Model") -> None:
         self._inner_models[id(model)] = model
         for v in self._model_views:
             model._attach_model_view(v)
 
-    def _remove_child_model(self, model):
+    def _remove_child_model(self, model: "Model") -> None:
         try:
             del self._inner_models[id(model)]
         except KeyError:
@@ -383,18 +416,17 @@ class Model:
             for v in self._model_views:
                 model._remove_model_view(v)
 
-    def _attach_model_view(self, function):
+    def _attach_model_view(self, function: ViewFunction) -> None:
         self._model_views.append(function)
         for inner in self._inner_models.values():
             inner._attach_model_view(function)
 
-    def _remove_model_view(self, function):
+    def _remove_model_view(self, function: ViewFunction) -> None:
         self._model_views.remove(function)
         for inner in self._inner_models.values():
             inner._remove_model_view(function)
 
-    def _notify_model_views(self, events):
-        events = tuple(events)
+    def _notify_model_views(self, events: TupleOfEvents):
         for view in self._model_views:
             view(self, events)
 

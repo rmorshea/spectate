@@ -1,13 +1,18 @@
 from contextlib import contextmanager
-from typing import Iterator, Callable, Optional
+from typing import Iterator, Callable, Optional, List
 
-from .base import Model
+from .base import Model, Event, TupleOfEvents
 
 __all__ = ["hold", "mute", "rollback"]
 
 
+_EventReducerFunc = Callable[[Model, List[Event]], List[Event]]
+
+
 @contextmanager
-def hold(model: Model, reducer: Optional[Callable] = None) -> Iterator[list]:
+def hold(
+    model: Model, reducer: Optional[_EventReducerFunc] = None
+) -> Iterator[List[Event]]:
     """Temporarilly withold change events in a modifiable list.
 
     All changes that are captured within a "hold" context are forwarded to a list
@@ -54,9 +59,9 @@ def hold(model: Model, reducer: Optional[Callable] = None) -> Iterator[list]:
     """
     if not isinstance(model, Model):
         raise TypeError("Expected a Model, not %r." % model)
-    events = []
+    events: List[Event] = []
     restore = model.__dict__.get("_notify_model_views")
-    model._notify_model_views = lambda e: events.extend(e)
+    model._notify_model_views = lambda e: events.extend(e)  # type: ignore
 
     try:
         yield events
@@ -64,7 +69,7 @@ def hold(model: Model, reducer: Optional[Callable] = None) -> Iterator[list]:
         if restore is None:
             del model._notify_model_views
         else:
-            model._notify_model_views = restore
+            model._notify_model_views = restore  # type: ignore
 
         if reducer is not None:
             events = reducer(model, events)
@@ -72,10 +77,15 @@ def hold(model: Model, reducer: Optional[Callable] = None) -> Iterator[list]:
         model._notify_model_views(tuple(events))
 
 
+_EventUndoFunc = Callable[[Model, TupleOfEvents, Exception], None]
+
+
 @contextmanager
 def rollback(
-    model: Model, undo: Optional[Callable] = None, *args, **kwargs
-) -> Iterator[list]:
+    model: Model,
+    undo: Optional[_EventUndoFunc] = None,
+    reducer: Optional[_EventReducerFunc] = None,
+) -> Iterator[None]:
     """Withold events if an error occurs.
 
     Generall operate
@@ -86,7 +96,7 @@ def rollback(
         undo:
             An optional function for reversing any changes that may have taken place.
             Its signature is ``(model, events, error)`` where ``model`` is the given
-            model, ``event`` is a tuple of all the events that took place, and ``error``
+            model, ``events`` is a list of all the events that took place, and ``error``
             is the exception that was riased. Any changes that you make to the model
             within this function will not produce events.
 
@@ -141,9 +151,9 @@ def rollback(
             {'a': 1, 'b': 2}
             {}
     """
-    with hold(model, *args, **kwargs) as events:
+    with hold(model, reducer=reducer) as events:
         try:
-            yield events
+            yield None
         except Exception as error:
             if undo is not None:
                 with mute(model):
@@ -153,7 +163,7 @@ def rollback(
 
 
 @contextmanager
-def mute(model: Model):
+def mute(model: Model) -> Iterator[None]:
     """Block a model's views from being notified.
 
     All changes within a "mute" context will be blocked. No content is yielded to the
@@ -183,11 +193,11 @@ def mute(model: Model):
     if not isinstance(model, Model):
         raise TypeError("Expected a Model, not %r." % model)
     restore = model.__dict__.get("_notify_model_views")
-    model._notify_model_views = lambda e: None
+    model._notify_model_views = lambda e: None  # type: ignore
     try:
-        yield
+        yield None
     finally:
         if restore is None:
             del model._notify_model_views
         else:
-            model._notify_model_views = restore
+            model._notify_model_views = restore  # type: ignore

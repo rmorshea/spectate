@@ -21,6 +21,7 @@ package = dict(
     url="https://github.com/rmorshea/spectate",
     keywords=["eventful", "callbacks", "mutable", "MVC", "model", "view", "controller"],
     platforms="Linux, Mac OS X, Windows",
+    package_data={"mypkg": [os.path.join("spectate", "py.typed")]},
 )
 
 # -----------------------------------------------------------------------------
