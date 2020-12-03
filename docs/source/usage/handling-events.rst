@@ -167,7 +167,7 @@ Manually Notifying
 At times, and more likely when writing tests, you may need to forcefully send an event
 to a model. This can be achieved using the :func:`~spectate.base.notifier` context
 manager which provides a ``notify()`` function identical to the one seen in
-:ref:`Model Callbacks`.
+:ref:`Control Callbacks`.
 
 .. warning::
 

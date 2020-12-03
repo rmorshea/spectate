@@ -118,7 +118,7 @@ This works just as well if you mix data types too:
     event: {'attr': 'y', 'old': Undefined, 'new': 1}
 
 However, note that events on nested data structures don't carry information about the
-location of the notifying model. For this you'll need to implement a :ref:`Custom Model`
+location of the notifying model. For this you'll need to implement a :ref:`Custom Models`
 and add this information to the events manually.
 
 
@@ -130,7 +130,7 @@ and broadcast events with a :func:`~spectate.base.notifier`. To get the idea acr
 lets implement a simple counter object that notifies when a value is incremented or
 decremented.
 
-.. code-block:
+.. code-block::
 
     from spectate import mvc
 
