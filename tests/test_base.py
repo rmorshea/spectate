@@ -114,7 +114,7 @@ def test_structure_events():
             return self.value
 
         def _after_change(self, answer, notify):
-            notify(old=answer.before, new=self.value)
+            notify(old=answer["before"], new=self.value)
 
         def __repr__(self):
             return "Container(%r)" % self.name

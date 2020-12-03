@@ -1,3 +1,7 @@
+# IDE
+.vscode
+.idea
+
 # PyEnv
 .python-version
 
@@ -60,3 +64,4 @@ target/
 
 .ipynb_checkpoints
 .pytest_cache
+Untitled*.ipynb

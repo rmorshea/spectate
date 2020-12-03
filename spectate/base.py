@@ -5,8 +5,6 @@ from typing import Union, Callable, Optional
 from contextlib import contextmanager
 from weakref import WeakValueDictionary
 
-from .utils import Immutable
-
 
 __all__ = ["Model", "Control", "view", "unview", "views", "link", "unlink", "notifier"]
 
@@ -119,7 +117,7 @@ def notifier(model):
     events = []
 
     def notify(*args, **kwargs):
-        events.append(Immutable(*args, **kwargs))
+        events.append(dict(*args, **kwargs))
 
     yield notify
 
@@ -134,10 +132,9 @@ class Control:
     called. For example there is a control method on the
     :class:`~spectate.mvc.models.List`
     which responds when :meth:`~spectate.mvc.models.List.append` is called.
-                target._notify_model_views(tuple(function(value, events)))
 
-    A control method is a slightly modified :ref:`beforeback <Spectator Beforebacks>` or
-    :ref:`afterback <Spectator Afterbacks>` that accepts an extra ``notify`` argument.
+    A control method is a slightly modified :ref:`beforeback <Control Beforebacks>` or
+    :ref:`afterback <Control Afterbacks>` that accepts an extra ``notify`` argument.
     These are added to a control object by calling :meth:`Control.before` or
     :meth:`Control.after` respectively. The ``notify`` arugment is a function which
     allows a control method to send messages to :func:`views <view>` that are registered
@@ -244,7 +241,7 @@ class Control:
             before_control = bound_control.before
             if before_control is not None:
                 before_value = before_control(
-                    obj, Immutable(name=name, args=args, kwargs=kwargs)
+                    obj, {"name": name, "args": args, "kwargs": kwargs}
                 )
             else:
                 before_value = None
@@ -254,7 +251,7 @@ class Control:
             after_control = bound_control.after
             if after_control is not None:
                 after_control(
-                    obj, Immutable(before=before_value, name=name, value=result)
+                    obj, {"before": before_value, "name": name, "value": result}
                 )
 
             return result
@@ -290,12 +287,12 @@ class BoundControl:
         @wraps(before)
         def beforeback(value, call):
             def parameters():
-                meth = getattr(value, call.name)
-                bound = signature(meth).bind(*call.args, **call.kwargs)
+                meth = getattr(value, call["name"])
+                bound = signature(meth).bind(*call["args"], **call["kwargs"])
                 return dict(bound.arguments)
 
             with notifier(value) as notify:
-                return before(call + {"parameters": parameters}, notify)
+                return before(dict(call, parameters=parameters), notify)
 
         return beforeback
 
@@ -344,10 +341,10 @@ class Model:
                         setattr(self, k, v)
 
                 def _control_before_attr_change(self, call, notify):
-                    return call.args[0], getattr(self, call.args[0], Undefined)
+                    return call["args"][0], getattr(self, call["args"][0], Undefined)
 
                 def _control_after_attr_change(self, answer, notify):
-                    attr, old = answer.before
+                    attr, old = answer["before"]
                     new = getattr(self, attr, Undefined)
                     if new != old:
                         notify(attr=attr, old=old, new=new)

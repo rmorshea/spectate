@@ -26,7 +26,7 @@ def test_hold_uses_events_from_reducer():
     counter, events = model_events(Counter)
 
     def reducer(model, events):
-        assert events == ({"old": 0, "new": 1},)
+        assert events == [{"old": 0, "new": 1}]
         yield {"custom": "event-1"}
         yield {"custom": "event-2"}
 

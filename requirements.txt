@@ -21,3 +21,4 @@ sphinx-autodoc-typehints
 # =======
 pytest
 flake8
+pytest-cov

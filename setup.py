@@ -13,6 +13,7 @@ package = dict(
     name="spectate",
     license="MIT",
     packages=find_packages(),
+    python_requires=">=3.6",
     description="Track changes to mutable data types.",
     classifiers=["Intended Audience :: Developers"],
     author="Ryan Morshead",
@@ -29,12 +30,6 @@ package = dict(
 # paths used to gather files
 here = os.path.abspath(os.path.dirname(__file__))
 root = os.path.join(here, package["name"])
-
-# -----------------------------------------------------------------------------
-# Requirements
-# -----------------------------------------------------------------------------
-
-package["extras_require"] = {":python_version < '3.6'": ["funcsigs"]}
 
 # -----------------------------------------------------------------------------
 # Library Version

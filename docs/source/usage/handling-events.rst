@@ -8,6 +8,7 @@ modify events before they are distributed to views. This allows you to
 edge cases in your code, improving performance by :ref:`merging <Merging Events>`
 events, or :ref:`undo <Rolling Back Changes>` unwanted changes.
 
+
 Holding Events
 --------------
 
@@ -160,8 +161,8 @@ be distributed:
         l.append(1)
 
 
-Force Notifying
----------------
+Manually Notifying
+------------------
 
 At times, and more likely when writing tests, you may need to forcefully send an event
 to a model. This can be achieved using the :func:`~spectate.base.notifier` context
