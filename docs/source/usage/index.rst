@@ -8,3 +8,4 @@ Usage
     handling-events
     builtin-model-types
     spectating-other-types
+    spectate-in-traitlets

@@ -86,7 +86,6 @@ def view(
 def unview(model: "Model", function: ViewFunction) -> None:
     """Remove a view callbcak from a model.
 
-                target._notify_model_views(tuple(function(value, events)))
     Parameters:
         model: The model which contains the view function.
         function: The callable which was registered to the model as a view.

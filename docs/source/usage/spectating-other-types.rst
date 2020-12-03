@@ -3,11 +3,11 @@ Spectating Other Types
 
 In a prior example demonstrating how to create :ref:`a custom model <Custom Models>` we
 used :func:`~spectate.base.notifier` to produce events. This is sufficient in most cases,
-but sometimes you arent' able to manually trigger
-events from within a method. This might occur when inheriting from a builtin type
-(e.g. ``list``, ``dict``, etc) that is implemented in C or a third party package that
-doesn't use ``spectate``. In those cases, you must wrap an existing method and are
-religated to producing events before and/or after it gets called.
+but sometimes you aren't able to manually trigger events from within a method. This might
+occur when inheriting from a builtin type (e.g. ``list``, ``dict``, etc) that is
+implemented in C or a third party package that doesn't use ``spectate``. In those cases,
+you must wrap an existing method and are religated to producing events before and/or
+after it gets called.
 
 In these scenarios you must define a :class:`~spectate.base.Model` subclass which has
 :class:`~spectate.base.Control` objects assigned to it. Each control object is
@@ -211,8 +211,8 @@ Now we can try incrementing and decrementing as before:
 Control Event Notifications
 ---------------------------
 
-We're now able to use :ref:`"beforebacks" <Model Beforebacks>` and
-:ref:`"afterbacks" <Model Afterbacks>` to print out information about a model before
+We're now able to use :ref:`"beforebacks" <Control Beforebacks>` and
+:ref:`"afterbacks" <Control Afterbacks>` to print out information about a model before
 and after a change occures, but what we actually want is to send this same information to
 :func:`views <spectate.base.view>` as we did when we learned :ref:`the basics`.
 To accomplish this we use the ``notify`` function passed into the beforeback and
@@ -303,7 +303,7 @@ Have a signature of ``(call, notify) -> before``
 
 + ``notify`` is a function which will distribute an event to :func:`views <spectate.base.view>`
 
-+ ``before`` is a value which gets passed on to its respective :ref:`afterback <Model Afterbacks>`.
++ ``before`` is a value which gets passed on to its respective :ref:`afterback <Control Afterbacks>`.
 
 
 Control Afterbacks
