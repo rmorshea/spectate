@@ -77,13 +77,10 @@ def hold(
         model._notify_model_views(tuple(events))
 
 
-_EventUndoFunc = Callable[[Model, TupleOfEvents, Exception], None]
-
-
 @contextmanager
 def rollback(
     model: Model,
-    undo: Optional[_EventUndoFunc] = None,
+    undo: Callable[[Model, TupleOfEvents, Exception], None] = None,
     reducer: Optional[_EventReducerFunc] = None,
 ) -> Iterator[None]:
     """Withold events if an error occurs.
