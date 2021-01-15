@@ -3,16 +3,18 @@ import sys
 from setuptools import find_packages
 from distutils.core import setup
 
+name = "spectate"
+
 # paths used to gather files
 here = os.path.abspath(os.path.dirname(__file__))
-pkg_root = os.path.join(here, package["name"])
+pkg_root = os.path.join(here, name)
 
 # -----------------------------------------------------------------------------
 # Package Basics
 # -----------------------------------------------------------------------------
 
 package = dict(
-    name="spectate",
+    name=name,
     license="MIT",
     packages=find_packages(exclude=["tests"]),
     python_requires=">=3.6",
@@ -24,7 +26,6 @@ package = dict(
     keywords=["eventful", "callbacks", "mutable", "MVC", "model", "view", "controller"],
     platforms="Linux, Mac OS X, Windows",
     include_package_data=True,
-    package_data={"spectate": [os.path.join("spectate", "py.typed")]},
 )
 
 # -----------------------------------------------------------------------------
