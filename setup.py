@@ -1,18 +1,20 @@
-from __future__ import print_function
-
 import os
 import sys
 from setuptools import find_packages
 from distutils.core import setup
 
+# paths used to gather files
+here = os.path.abspath(os.path.dirname(__file__))
+pkg_root = os.path.join(here, package["name"])
+
 # -----------------------------------------------------------------------------
-# Package
+# Package Basics
 # -----------------------------------------------------------------------------
 
 package = dict(
     name="spectate",
     license="MIT",
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests"]),
     python_requires=">=3.6",
     description="Track changes to mutable data types.",
     classifiers=["Intended Audience :: Developers"],
@@ -26,24 +28,16 @@ package = dict(
 )
 
 # -----------------------------------------------------------------------------
-# Basics
-# -----------------------------------------------------------------------------
-
-# paths used to gather files
-here = os.path.abspath(os.path.dirname(__file__))
-root = os.path.join(here, package["name"])
-
-# -----------------------------------------------------------------------------
 # Library Version
 # -----------------------------------------------------------------------------
 
-with open(os.path.join(root, "__init__.py")) as f:
+with open(os.path.join(pkg_root, "__init__.py")) as f:
     for line in f.read().split("\n"):
         if line.startswith("__version__ = "):
             package["version"] = eval(line.split("=", 1)[1])
             break
     else:
-        print("No version found in %s/__init__.py" % root)
+        print("No version found in %s/__init__.py" % pkg_root)
         sys.exit(1)
 
 # -----------------------------------------------------------------------------
