@@ -7,7 +7,6 @@ and can instead be done automagically in the background.
 
 .. toctree::
     :hidden:
-    :maxdepth: 2
 
     install
     usage/the-basics
@@ -15,7 +14,12 @@ and can instead be done automagically in the background.
     usage/builtin-model-types
     usage/spectating-other-types
     usage/spectate-in-traitlets
+
+.. toctree::
+    :hidden:
+    :caption: Other Resources
     api
+    Source Code <https://github.com/rmorshea/spectate>
 
 
 At A Glance
