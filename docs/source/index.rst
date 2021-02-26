@@ -6,11 +6,17 @@ protocols for managing updates, don't need to be the outward responsibility of a
 and can instead be done automagically in the background.
 
 .. toctree::
+    :hidden:
     :maxdepth: 2
 
     install
-    usage/index
+    usage/the-basics
+    usage/handling-events
+    usage/builtin-model-types
+    usage/spectating-other-types
+    usage/spectate-in-traitlets
     api
+
 
 At A Glance
 -----------

@@ -6,7 +6,7 @@ cmarkgfm
 
 # Documentation
 # =============
-sphinx-rtd-theme
+furo
 sphinx-autodoc-typehints
 
 # Testing
