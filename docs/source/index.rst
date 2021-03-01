@@ -18,6 +18,7 @@ and can instead be done automagically in the background.
 .. toctree::
     :hidden:
     :caption: Other Resources
+
     api
     Source Code <https://github.com/rmorshea/spectate>
 
