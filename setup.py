@@ -16,7 +16,7 @@ pkg_root = os.path.join(here, name)
 package = dict(
     name=name,
     license="MIT",
-    packages=find_packages(exclude=["tests"]),
+    packages=find_packages(exclude=["tests*"]),
     python_requires=">=3.6",
     description="Track changes to mutable data types.",
     classifiers=["Intended Audience :: Developers"],
